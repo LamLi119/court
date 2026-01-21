@@ -1,0 +1,7 @@
+{
+  "name": "HK Pickleball Finder",
+  "description": "A comprehensive directory for finding and booking pickleball venues in Hong Kong with bilingual support and admin management.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

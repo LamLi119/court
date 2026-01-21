@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Venue, Language, AppTab } from './types';
 import { initialVenues } from './data/initialVenues';
 import { translate } from './utils/translations';
+import { db } from './db';
 import Header from './components/Header';
 import AdminLogin from './components/AdminLogin';
 import DesktopView from './components/DesktopView';
@@ -20,11 +21,10 @@ function App() {
     const [showVenueForm, setShowVenueForm] = useState(false);
     const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
     const [venueToDelete, setVenueToDelete] = useState<Venue | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     
-    const [venues, setVenues] = useState<Venue[]>(() => {
-        const saved = localStorage.getItem('pickleball_venues');
-        return saved ? JSON.parse(saved) : initialVenues;
-    });
+    const [venues, setVenues] = useState<Venue[]>(initialVenues);
 
     const [savedVenues, setSavedVenues] = useState<number[]>(() => {
         const saved = localStorage.getItem('pickleball_saved');
@@ -38,8 +38,29 @@ function App() {
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('pickleball_darkmode') === 'true');
     const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
 
-    useEffect(() => localStorage.setItem('pickleball_venues', JSON.stringify(venues)), [venues]);
+    // Initial Database Fetch
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setIsLoading(true);
+                const data = await db.getVenues();
+                if (data && data.length > 0) {
+                    setVenues(data);
+                }
+            } catch (err) {
+                console.warn('Could not connect to DB, using local data', err);
+                // Fallback to initialVenues if DB connection fails
+                const local = localStorage.getItem('pickleball_venues');
+                if (local) setVenues(JSON.parse(local));
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadData();
+    }, []);
+
     useEffect(() => localStorage.setItem('pickleball_saved', JSON.stringify(savedVenues)), [savedVenues]);
+    useEffect(() => localStorage.setItem('pickleball_venues', JSON.stringify(venues)), [venues]);
     
     useEffect(() => {
         localStorage.setItem('pickleball_darkmode', darkMode.toString());
@@ -53,7 +74,6 @@ function App() {
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
         window.addEventListener('resize', handleResize);
-        // Fixed: Use removeEventListener instead of removeResizeListener
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
@@ -90,17 +110,48 @@ function App() {
         setSavedVenues(prev => prev.includes(venueId) ? prev.filter(id => id !== venueId) : [...prev, venueId]);
     }, []);
 
-    const confirmDeleteAction = useCallback(() => {
+    const confirmDeleteAction = useCallback(async () => {
         if (!venueToDelete) return;
-        setVenues(prev => prev.filter(v => v.id !== venueToDelete.id));
-        setSavedVenues(prev => prev.filter(id => id !== venueToDelete.id));
-        setVenueToDelete(null);
-        setShowVenueForm(false);
-        setEditingVenue(null);
-        setSelectedVenue(null);
+        try {
+            await db.deleteVenue(venueToDelete.id);
+            setVenues(prev => prev.filter(v => v.id !== venueToDelete.id));
+            setSavedVenues(prev => prev.filter(id => id !== venueToDelete.id));
+        } catch (err) {
+            alert('Failed to delete venue from database.');
+        } finally {
+            setVenueToDelete(null);
+            setShowVenueForm(false);
+            setEditingVenue(null);
+            setSelectedVenue(null);
+        }
     }, [venueToDelete]);
 
+    const handleSaveVenue = async (venueData: any) => {
+        try {
+            const saved = await db.upsertVenue(venueData);
+            if (editingVenue) {
+                setVenues(prev => prev.map(old => old.id === saved.id ? saved : old));
+            } else {
+                setVenues(prev => [...prev, saved]);
+            }
+            setShowVenueForm(false);
+            setEditingVenue(null);
+            setSelectedVenue(null);
+        } catch (err) {
+            alert('Failed to save to database. Ensure Supabase keys are configured.');
+        }
+    };
+
     const renderMain = () => {
+        if (isLoading) {
+            return (
+                <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+                    <div className="spinner"></div>
+                    <p className="font-black text-sm tracking-widest opacity-50 uppercase">Syncing Courts...</p>
+                </div>
+            );
+        }
+
         if (isMobile) {
             return (
                 <MobileView
@@ -246,16 +297,7 @@ function App() {
             {showVenueForm && (
                 <VenueForm
                     venue={editingVenue}
-                    onSave={(v) => {
-                        if (editingVenue) {
-                            setVenues(prev => prev.map(old => old.id === editingVenue.id ? { ...v, id: old.id } : old));
-                        } else {
-                            setVenues(prev => [...prev, { ...v, id: Date.now() }]);
-                        }
-                        setShowVenueForm(false);
-                        setEditingVenue(null);
-                        setSelectedVenue(null);
-                    }}
+                    onSave={handleSaveVenue}
                     onCancel={() => {
                         setShowVenueForm(false);
                         setEditingVenue(null);
@@ -270,7 +312,7 @@ function App() {
                 />
             )}
 
-            {/* CUSTOM DELETE POPUP - Raised z-index to top level */}
+            {/* CUSTOM DELETE POPUP */}
             {venueToDelete && (
                 <div className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center p-4 backdrop-blur-md">
                     <div className={`w-full max-w-sm rounded-[32px] p-8 shadow-2xl animate-bounce-in ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>

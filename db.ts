@@ -1,0 +1,53 @@
+
+import { createClient } from '@supabase/supabase-js';
+import { Venue } from './types';
+
+// REPLACE THESE with your actual project values from Supabase Settings > API
+const SUPABASE_URL = 'https://kgxiomuywilpevsjsoeg.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_UkaLkiG4oFktXNCrGBigRA_lVUcreUM';
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+export const db = {
+    async getVenues(): Promise<Venue[]> {
+        const { data, error } = await supabase
+            .from('venues')
+            .select('*')
+            .order('name', { ascending: true });
+        
+        if (error) {
+            console.error('Error fetching venues:', error);
+            throw error;
+        }
+        return (data || []) as Venue[];
+    },
+
+    async upsertVenue(venue: Partial<Venue>): Promise<Venue> {
+        // Remove the id for new venues to let Postgres generate it
+        const { id, ...dataToSave } = venue;
+        
+        const query = id 
+            ? supabase.from('venues').upsert({ ...dataToSave, id }).select().single()
+            : supabase.from('venues').insert(dataToSave).select().single();
+
+        const { data, error } = await query;
+
+        if (error) {
+            console.error('Error saving venue:', error);
+            throw error;
+        }
+        return data as Venue;
+    },
+
+    async deleteVenue(id: number): Promise<void> {
+        const { error } = await supabase
+            .from('venues')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('Error deleting venue:', error);
+            throw error;
+        }
+    }
+};

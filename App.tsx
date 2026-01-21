@@ -1,7 +1,5 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Venue, Language, AppTab } from './types';
-import { initialVenues } from './data/initialVenues';
 import { translate } from './utils/translations';
 import { db } from './db';
 import Header from './components/Header';
@@ -24,7 +22,8 @@ function App() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
-    const [venues, setVenues] = useState<Venue[]>(initialVenues);
+    // Initialize with empty array since initialVenues is being deleted
+    const [venues, setVenues] = useState<Venue[]>([]);
 
     const [savedVenues, setSavedVenues] = useState<number[]>(() => {
         const saved = localStorage.getItem('pickleball_saved');
@@ -46,10 +45,13 @@ function App() {
                 const data = await db.getVenues();
                 if (data && data.length > 0) {
                     setVenues(data);
+                } else {
+                    // If DB is empty, try local storage fallback
+                    const local = localStorage.getItem('pickleball_venues');
+                    if (local) setVenues(JSON.parse(local));
                 }
             } catch (err) {
                 console.warn('Could not connect to DB, using local data', err);
-                // Fallback to initialVenues if DB connection fails
                 const local = localStorage.getItem('pickleball_venues');
                 if (local) setVenues(JSON.parse(local));
             } finally {
@@ -312,7 +314,6 @@ function App() {
                 />
             )}
 
-            {/* CUSTOM DELETE POPUP */}
             {venueToDelete && (
                 <div className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center p-4 backdrop-blur-md">
                     <div className={`w-full max-w-sm rounded-[32px] p-8 shadow-2xl animate-bounce-in ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>

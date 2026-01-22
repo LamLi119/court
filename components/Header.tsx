@@ -21,7 +21,7 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage, isAdmin,  onLogo
                 <div className="flex items-center gap-4 md:gap-8">
                     <div className="flex items-center gap-2.5 cursor-pointer group" onClick={() => setTab('explore')}>
                         <div className="w-8 h-8 transition-transform duration-300 group-hover:rotate-12 group-active:scale-90">
-                            <!-- <img src="assets/green-G.svg" className="w-full h-full object-contain" alt="HK Pickleball Logo" /> -->
+                           
                         </div>
                         <h1 className="hidden sm:block text-xl font-black tracking-tighter text-[#00e911]">HK PICKLEBALL</h1>
                     </div>

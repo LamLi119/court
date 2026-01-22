@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { Venue } from './types';
 
 // REPLACE THESE with your actual project values from Supabase Settings > API
-const SUPABASE_URL = 'https://powvgoqrbazuybmuvwys.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_K-oIINOb0IIF5Edd2cjhmA_bgJNK8ng';
+const SUPABASE_URL = 'https://kgxiomuywilpevsjsoeg.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_UkaLkiG4oFktXNCrGBigRA_lVUcreUM';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

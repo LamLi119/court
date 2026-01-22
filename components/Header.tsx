@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Language, AppTab } from '../types';
 
@@ -15,13 +14,15 @@ interface HeaderProps {
     setTab: (t: AppTab) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ language, setLanguage, isAdmin, onAdminClick, onLogout, darkMode, setDarkMode, t, currentTab, setTab }) => {
+const Header: React.FC<HeaderProps> = ({ language, setLanguage, isAdmin,  onLogout, darkMode, setDarkMode, t, currentTab, setTab }) => {
     return (
         <header className={`sticky top-0 z-[60] ${darkMode ? 'bg-gray-900/95' : 'bg-white/95'} backdrop-blur-md border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'} shadow-sm`}>
             <div className="container mx-auto px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-4 md:gap-8">
-                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => setTab('explore')}>
-                        <span className="text-2xl">🎾</span>
+                    <div className="flex items-center gap-2.5 cursor-pointer group" onClick={() => setTab('explore')}>
+                        <div className="w-8 h-8 transition-transform duration-300 group-hover:rotate-12 group-active:scale-90">
+                           
+                        </div>
                         <h1 className="hidden sm:block text-xl font-black tracking-tighter text-[#00e911]">HK PICKLEBALL</h1>
                     </div>
                     
@@ -40,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage, isAdmin, onAdmin
                         {darkMode ? '☀️' : '🌙'}
                     </button>
 
-                    <div className="flex bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+                    <div className={`flex ${darkMode ? 'bg-gray-800' : 'bg-gray-100' } rounded-xl p-1`}>
                         <button onClick={() => setLanguage('en')} className={`px-2 md:px-3 py-1 text-[10px] md:text-xs font-black rounded-lg ${language === 'en' ? 'bg-[#00e911] text-white shadow' : 'text-gray-400'}`}>EN</button>
                         <button onClick={() => setLanguage('zh')} className={`px-2 md:px-3 py-1 text-[10px] md:text-xs font-black rounded-lg ${language === 'zh' ? 'bg-[#00e911] text-white shadow' : 'text-gray-400'}`}>中文</button>
                     </div>

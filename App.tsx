@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Venue, Language, AppTab } from './types';
-import { translate } from './utils/translations';
-import { db } from './db';
-import Header from './components/Header';
-import AdminLogin from './components/AdminLogin';
-import DesktopView from './components/DesktopView';
-import MobileView from './components/MobileView';
-import MobileNav from './components/MobileNav';
-import VenueDetail from './components/VenueDetail';
-import VenueForm from './components/VenueForm';
+import { Venue, Language, AppTab } from './types.ts';
+import { translate } from './utils/translations.ts';
+import { db } from './db.ts';
+import Header from './components/Header.tsx';
+import AdminLogin from './components/AdminLogin.tsx';
+import DesktopView from './components/DesktopView.tsx';
+import MobileView from './components/MobileView.tsx';
+import MobileNav from './components/MobileNav.tsx';
+import VenueDetail from './components/VenueDetail.tsx';
+import VenueForm from './components/VenueForm.tsx';
 
 function App() {
     const [language, setLanguage] = useState<Language>('en');
@@ -20,14 +20,17 @@ function App() {
     const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
     const [venueToDelete, setVenueToDelete] = useState<Venue | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     
-    // Initialize with empty array since initialVenues is being deleted
     const [venues, setVenues] = useState<Venue[]>([]);
 
     const [savedVenues, setSavedVenues] = useState<number[]>(() => {
-        const saved = localStorage.getItem('pickleball_saved');
+        const saved = localStorage.getItem('pickleball_saved_ids');
         return saved ? JSON.parse(saved) : [];
+    });
+
+    const [savedDetails, setSavedDetails] = useState<Venue[]>(() => {
+        const details = localStorage.getItem('pickleball_saved_details');
+        return details ? JSON.parse(details) : [];
     });
 
     const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
@@ -37,7 +40,6 @@ function App() {
     const [darkMode, setDarkMode] = useState(() => localStorage.getItem('pickleball_darkmode') === 'true');
     const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
 
-    // Initial Database Fetch
     useEffect(() => {
         const loadData = async () => {
             try {
@@ -46,7 +48,6 @@ function App() {
                 if (data && data.length > 0) {
                     setVenues(data);
                 } else {
-                    // If DB is empty, try local storage fallback
                     const local = localStorage.getItem('pickleball_venues');
                     if (local) setVenues(JSON.parse(local));
                 }
@@ -61,7 +62,18 @@ function App() {
         loadData();
     }, []);
 
-    useEffect(() => localStorage.setItem('pickleball_saved', JSON.stringify(savedVenues)), [savedVenues]);
+    const availableStations = useMemo(() => {
+        const stations = venues
+            .map(v => v.mtrStation)
+            .filter((station): station is string => !!station);
+        return Array.from(new Set(stations)).sort();
+    }, [venues]);
+
+    useEffect(() => {
+        localStorage.setItem('pickleball_saved_ids', JSON.stringify(savedVenues));
+        localStorage.setItem('pickleball_saved_details', JSON.stringify(savedDetails));
+    }, [savedVenues, savedDetails]);
+
     useEffect(() => localStorage.setItem('pickleball_venues', JSON.stringify(venues)), [venues]);
     
     useEffect(() => {
@@ -93,24 +105,33 @@ function App() {
     }, [adminPassword]);
 
     const filteredVenues = useMemo(() => {
-        let list = venues;
-        if (currentTab === 'saved') {
-            list = venues.filter(v => savedVenues.includes(v.id));
-        }
-        return list.filter(venue => {
+        const source = currentTab === 'saved' ? savedDetails : venues;
+        return source.filter(venue => {
             const query = searchQuery.toLowerCase();
             const nameMatch = venue.name.toLowerCase().includes(query) ||
                 venue.mtrStation.toLowerCase().includes(query) ||
                 venue.address.toLowerCase().includes(query);
-            const mtrMatch = !mtrFilter || venue.mtrStation.includes(mtrFilter);
+            const mtrMatch = !mtrFilter || venue.mtrStation.toLowerCase().includes(mtrFilter.toLowerCase());
             const distanceMatch = !distanceFilter || venue.walkingDistance <= parseInt(distanceFilter);
             return nameMatch && mtrMatch && distanceMatch;
         });
-    }, [venues, searchQuery, mtrFilter, distanceFilter, currentTab, savedVenues]);
+    }, [venues, searchQuery, mtrFilter, distanceFilter, currentTab, savedDetails]);
 
     const toggleSaveVenue = useCallback((venueId: number) => {
-        setSavedVenues(prev => prev.includes(venueId) ? prev.filter(id => id !== venueId) : [...prev, venueId]);
-    }, []);
+        setSavedVenues(prev => {
+            const isSaving = !prev.includes(venueId);
+            if (isSaving) {
+                const detail = venues.find(v => v.id === venueId);
+                if (detail) {
+                    setSavedDetails(prevDetails => [...prevDetails, detail]);
+                }
+                return [...prev, venueId];
+            } else {
+                setSavedDetails(prevDetails => prevDetails.filter(d => d.id !== venueId));
+                return prev.filter(id => id !== venueId);
+            }
+        });
+    }, [venues]);
 
     const confirmDeleteAction = useCallback(async () => {
         if (!venueToDelete) return;
@@ -118,8 +139,9 @@ function App() {
             await db.deleteVenue(venueToDelete.id);
             setVenues(prev => prev.filter(v => v.id !== venueToDelete.id));
             setSavedVenues(prev => prev.filter(id => id !== venueToDelete.id));
+            setSavedDetails(prev => prev.filter(d => d.id !== venueToDelete.id));
         } catch (err) {
-            alert('Failed to delete venue from database.');
+            alert('Failed to delete venue.');
         } finally {
             setVenueToDelete(null);
             setShowVenueForm(false);
@@ -129,19 +151,17 @@ function App() {
     }, [venueToDelete]);
 
     const handleSaveVenue = async (venueData: any) => {
-        try {
-            const saved = await db.upsertVenue(venueData);
-            if (editingVenue) {
-                setVenues(prev => prev.map(old => old.id === saved.id ? saved : old));
-            } else {
-                setVenues(prev => [...prev, saved]);
-            }
-            setShowVenueForm(false);
-            setEditingVenue(null);
-            setSelectedVenue(null);
-        } catch (err) {
-            alert('Failed to save to database. Ensure Supabase keys are configured.');
+        // Return promise so VenueForm can handle its own state
+        const saved = await db.upsertVenue(venueData);
+        if (editingVenue) {
+            setVenues(prev => prev.map(old => old.id === saved.id ? saved : old));
+            setSavedDetails(prev => prev.map(old => old.id === saved.id ? saved : old));
+        } else {
+            setVenues(prev => [...prev, saved]);
         }
+        setShowVenueForm(false);
+        setEditingVenue(null);
+        setSelectedVenue(null);
     };
 
     const renderMain = () => {
@@ -173,6 +193,7 @@ function App() {
                     toggleSave={toggleSaveVenue}
                     isAdmin={isAdmin}
                     onEditVenue={(id, v) => { setEditingVenue(v); setShowVenueForm(true); }}
+                    availableStations={availableStations}
                 />
             );
         }
@@ -216,6 +237,7 @@ function App() {
                     const target = venues.find(v => v.id === id);
                     if (target) setVenueToDelete(target);
                 }}
+                availableStations={availableStations}
             />
         );
     };
@@ -264,13 +286,13 @@ function App() {
                                         </div>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button onClick={() => { setEditingVenue(v); setShowVenueForm(true); }} className="p-3 bg-blue-500/10 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition-all">✏️</button>
+                                        <button onClick={() => { setEditingVenue(v); setShowVenueForm(true); }} className="p-3 bg-blue-500/10 text-blue-500 rounded-xl">✏️</button>
                                         <button 
                                             onClick={(e) => { 
                                                 e.stopPropagation();
                                                 setVenueToDelete(v);
                                             }} 
-                                            className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                                            className="p-3 bg-red-500/10 text-red-500 rounded-xl"
                                         >
                                             🗑️
                                         </button>
@@ -324,19 +346,19 @@ function App() {
                             </h3>
                             <p className={`text-sm font-bold px-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                                 {language === 'en' 
-                                    ? `Are you sure you want to delete "${venueToDelete.name}"? This action cannot be undone.` 
-                                    : `確定要刪除「${venueToDelete.name}」嗎？此動作無法復原。`}
+                                    ? `Are you sure you want to delete "${venueToDelete.name}"?` 
+                                    : `確定要刪除「${venueToDelete.name}」嗎？`}
                             </p>
                             <div className="flex flex-col gap-3 pt-6">
                                 <button 
                                     onClick={confirmDeleteAction}
-                                    className="w-full py-4 bg-red-500 text-white rounded-2xl font-black shadow-lg shadow-red-500/30 active:scale-95 transition-all"
+                                    className="w-full py-4 bg-red-500 text-white rounded-2xl font-black"
                                 >
                                     {language === 'en' ? 'YES, DELETE IT' : '確定刪除'}
                                 </button>
                                 <button 
                                     onClick={() => setVenueToDelete(null)}
-                                    className={`w-full py-4 rounded-2xl font-black active:scale-95 transition-all ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'}`}
+                                    className={`w-full py-4 rounded-2xl font-black ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
                                 >
                                     {language === 'en' ? 'NO, CANCEL' : '取消'}
                                 </button>

@@ -28,6 +28,16 @@ const MobileNav: React.FC<MobileNavProps> = ({ currentTab, setTab, t, darkMode, 
         <span className="text-xl">❤️</span>
         <span className="text-[10px] font-bold uppercase tracking-wider">{t('saved')}</span>
       </button>
+
+      {isAdmin && (
+        <button 
+          onClick={() => setTab('admin')}
+          className={`flex-1 flex flex-col items-center gap-1 transition-all ${currentTab === 'admin' ? 'text-blue-500 scale-110' : 'text-gray-400'}`}
+        >
+          <span className="text-xl">⚙️</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider">{t('admin')}</span>
+        </button>
+      )}
     </div>
   );
 };

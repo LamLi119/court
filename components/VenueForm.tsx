@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Venue, Language } from '../types';
 
@@ -6,7 +5,7 @@ declare var google: any;
 
 interface VenueFormProps {
     venue: Venue | null;
-    onSave: (v: any) => void;
+    onSave: (v: any) => Promise<void>;
     onCancel: () => void;
     onDelete?: (id: number) => void;
     language: Language;
@@ -31,6 +30,11 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
         coordinates: { lat: 22.3193, lng: 114.1694 }
     });
 
+    const [placesApiError, setPlacesApiError] = useState<boolean>(false);
+    const [isUploading, setIsUploading] = useState<boolean>(false);
+    const [isSaving, setIsSaving] = useState<boolean>(false);
+    const [saveError, setSaveError] = useState<string | null>(null);
+    
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pricingImageRef = useRef<HTMLInputElement>(null);
     const addressInputRef = useRef<HTMLInputElement>(null);
@@ -39,65 +43,114 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
     useEffect(() => {
         if (!addressInputRef.current) return;
 
-        autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
-            componentRestrictions: { country: "hk" },
-            fields: ["geometry", "formatted_address"],
-            types: ["establishment", "geocode"]
-        });
+        if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+            console.warn("Places API not available. Autocomplete disabled.");
+            setPlacesApiError(true);
+            return;
+        }
 
-        autocompleteRef.current.addListener("place_changed", () => {
-            const place = autocompleteRef.current.getPlace();
-            if (!place.geometry || !place.geometry.location) return;
+        try {
+            autocompleteRef.current = new google.maps.places.Autocomplete(addressInputRef.current, {
+                componentRestrictions: { country: "hk" },
+                fields: ["geometry", "formatted_address"],
+                types: ["establishment", "geocode"]
+            });
 
-            const latLng = {
-                lat: place.geometry.location.lat(),
-                lng: place.geometry.location.lng()
-            };
+            autocompleteRef.current.addListener("place_changed", () => {
+                const place = autocompleteRef.current.getPlace();
+                if (!place.geometry || !place.geometry.location) return;
 
-            setFormData((prev: any) => ({
-                ...prev,
-                address: place.formatted_address,
-                coordinates: latLng
-            }));
-        });
+                const latLng = {
+                    lat: place.geometry.location.lat(),
+                    lng: place.geometry.location.lng()
+                };
+
+                setFormData((prev: any) => ({
+                    ...prev,
+                    address: place.formatted_address,
+                    coordinates: latLng
+                }));
+            });
+        } catch (err) {
+            console.error("Failed to initialize Autocomplete:", err);
+            setPlacesApiError(true);
+        }
     }, []);
 
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData((prev: any) => ({
-                    ...prev,
-                    images: [...prev.images, reader.result as string].slice(0, 12)
-                }));
-            };
-            reader.readAsDataURL(file);
-        });
-    };
+        if (files.length === 0) return;
 
-    const handlePricingImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData((prev: any) => ({
-                    ...prev,
-                    pricing: { ...prev.pricing, imageUrl: reader.result as string, type: 'image' }
-                }));
-            };
-            reader.readAsDataURL(file);
+        setIsUploading(true);
+        setSaveError(null);
+        try {
+            const uploadPromises = files.map(file => {
+                return new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            const results = await Promise.all(uploadPromises);
+            setFormData((prev: any) => ({
+                ...prev,
+                images: [...prev.images, ...results].slice(0, 12)
+            }));
+        } catch (err) {
+            console.error("Upload failed", err);
+            setSaveError("Failed to upload photos. Please try smaller files.");
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handlePricingImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setSaveError(null);
+        try {
+            const result = await new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(file);
+            });
+
+            setFormData((prev: any) => ({
+                ...prev,
+                pricing: { ...prev.pricing, imageUrl: result, type: 'image' }
+            }));
+        } catch (err) {
+            console.error("Pricing upload failed", err);
+            setSaveError("Failed to upload pricing image.");
+        } finally {
+            setIsUploading(false);
+            if (pricingImageRef.current) pricingImageRef.current.value = '';
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+        if (isUploading || isSaving) return;
+        
+        setIsSaving(true);
+        setSaveError(null);
+        
+        try {
+            await onSave(formData);
+        } catch (err: any) {
+            console.error("Error in onSave:", err);
+            setSaveError(err.message || "An unexpected error occurred while saving. Please check your connection.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleDelete = () => {
         if (!venue) return;
-        // Pass to parent to handle the high-level custom popup
         onDelete?.(venue.id);
     };
 
@@ -106,15 +159,30 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
 
     return (
         <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-0 md:p-4">
-            <div className={`w-full max-w-4xl h-full md:h-[90vh] flex flex-col shadow-2xl ${darkMode ? 'bg-gray-800' : 'bg-white'} md:rounded-3xl animate-in zoom-in duration-300`}>
-                <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center">
+            <div className={`w-full max-w-4xl h-full md:h-[90vh] flex flex-col shadow-2xl ${darkMode ? 'bg-gray-800' : 'bg-white'} md:rounded-3xl animate-in zoom-in duration-300 overflow-hidden`}>
+                <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-inherit">
                     <h2 className="text-2xl font-black">Court Management</h2>
                     <button onClick={onCancel} className="text-3xl font-light hover:opacity-50 transition-opacity">×</button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
+                    {/* Error Alarm */}
+                    {saveError && (
+                        <div className="animate-in slide-in-from-top-4 duration-300 p-4 bg-red-500 rounded-2xl flex items-start gap-3 shadow-lg shadow-red-500/20">
+                            <span className="text-2xl">⚠️</span>
+                            <div className="flex-1">
+                                <h4 className="text-white font-black text-xs uppercase tracking-widest mb-1">Save Failed</h4>
+                                <p className="text-white text-xs font-bold leading-relaxed">{saveError}</p>
+                            </div>
+                            <button onClick={() => setSaveError(null)} className="text-white/60 hover:text-white font-black text-xl">×</button>
+                        </div>
+                    )}
+
                     <div className="relative">
-                        <label className={labelClass}>Full Address * (Search to pin location)</label>
+                        <label className={labelClass}>
+                            {language === 'en' ? 'Full Address *' : '詳細地址 *'} 
+                            {placesApiError && <span className="text-red-500 ml-2">(Autocomplete Blocked)</span>}
+                        </label>
                         <input 
                             type="text"
                             ref={addressInputRef}
@@ -122,8 +190,15 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                             onChange={e => setFormData({...formData, address: e.target.value})} 
                             className={inputClass} 
                             required 
-                            placeholder="Start typing building or street name..."
+                            placeholder={placesApiError ? "Manual address entry required..." : "Start typing building or street name..."}
                         />
+                        {placesApiError && (
+                            <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-[10px] font-bold text-red-500">
+                                {language === 'en' 
+                                    ? "Places API is blocked. Address must be entered manually and map coordinates will default to HK center." 
+                                    : "地點搜尋 API 被阻擋。地址需手動輸入，且地圖座標將預設為香港中心。"}
+                            </div>
+                        )}
                         <div className="mt-2 flex items-center justify-between px-1">
                             <span className="text-[10px] font-bold opacity-40 uppercase">GPS Sync: {formData.coordinates.lat.toFixed(4)}, {formData.coordinates.lng.toFixed(4)}</span>
                         </div>
@@ -168,7 +243,12 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                                     <button type="button" onClick={() => setFormData({...formData, images: formData.images.filter((_:any, idx:number) => idx !== i)})} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">×</button>
                                 </div>
                             ))}
-                            {formData.images.length < 12 && (
+                            {isUploading && (
+                                <div className="aspect-square rounded-xl border-2 border-dashed border-[#00e911] flex items-center justify-center bg-[#00e911]/5">
+                                    <div className="w-6 h-6 border-2 border-[#00e911]/20 border-l-[#00e911] rounded-full animate-spin"></div>
+                                </div>
+                            )}
+                            {formData.images.length < 12 && !isUploading && (
                                 <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-xl border-2 border-dashed flex items-center justify-center text-gray-400 hover:border-[#00e911] hover:text-[#00e911] transition-all bg-gray-50 dark:bg-gray-700/30">
                                     <span className="text-2xl">+</span>
                                 </button>
@@ -189,7 +269,12 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                             <textarea value={formData.pricing.content} onChange={e => setFormData({...formData, pricing: {...formData.pricing, content: e.target.value}})} className={`${inputClass} h-24`} />
                         ) : (
                             <div className="relative h-40 border-2 border-dashed rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 overflow-hidden">
-                                {formData.pricing.imageUrl ? (
+                                {isUploading ? (
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="w-8 h-8 border-3 border-[#00e911]/20 border-l-[#00e911] rounded-full animate-spin"></div>
+                                        <span className="text-[10px] font-black text-[#00e911] uppercase tracking-widest">Processing...</span>
+                                    </div>
+                                ) : formData.pricing.imageUrl ? (
                                     <>
                                         <img src={formData.pricing.imageUrl} className="h-full w-full object-contain" alt="" />
                                         <button type="button" onClick={() => setFormData({...formData, pricing: {...formData.pricing, imageUrl: ''}})} className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full shadow-lg">×</button>
@@ -204,8 +289,18 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                 </form>
 
                 <div className="p-6 border-t dark:border-gray-700 flex gap-4 bg-white dark:bg-gray-800 md:rounded-b-3xl">
-                    <button type="submit" onClick={handleSubmit} className="flex-1 px-6 py-4 bg-[#00e911] text-white rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all uppercase">Save Court</button>
-                    {venue && (
+                    <button 
+                        type="submit" 
+                        onClick={handleSubmit} 
+                        disabled={isUploading || isSaving}
+                        className={`flex-1 px-6 py-4 rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all uppercase flex items-center justify-center gap-3 ${isUploading || isSaving ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed opacity-80' : 'bg-[#00e911] text-white hover:brightness-105'}`}
+                    >
+                        {(isUploading || isSaving) && (
+                            <div className="w-5 h-5 border-3 border-white/20 border-l-white rounded-full animate-spin"></div>
+                        )}
+                        {isSaving ? 'Saving...' : isUploading ? 'Uploading...' : 'Save Court'}
+                    </button>
+                    {venue && !isSaving && (
                         <button type="button" onClick={handleDelete} className="px-6 py-4 bg-red-500 text-white rounded-2xl font-black active:scale-95 transition-all">DELETE</button>
                     )}
                 </div>

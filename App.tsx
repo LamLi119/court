@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+<<<<<<< Updated upstream
 import { Venue, Language, AppTab } from './types';
 import { translate } from './utils/translations';
 import { db } from './db';
@@ -9,6 +10,18 @@ import MobileView from './components/MobileView';
 import MobileNav from './components/MobileNav';
 import VenueDetail from './components/VenueDetail';
 import VenueForm from './components/VenueForm';
+=======
+import { Venue, Language, AppTab } from './types.ts';
+import { translate } from './src/utils/translations.ts';
+import { db } from './db.ts';
+import Header from './src/components/Header.tsx';
+import AdminLogin from './src/components/AdminLogin.tsx';
+import DesktopView from './src/components/DesktopView.tsx';
+import MobileView from './src/components/MobileView.tsx';
+import MobileNav from './src/components/MobileNav.tsx';
+import VenueDetail from './src/components/VenueDetail.tsx';
+import VenueForm from './src/components/VenueForm.tsx';
+>>>>>>> Stashed changes
 
 function App() {
     const [language, setLanguage] = useState<Language>('en');
@@ -129,6 +142,7 @@ function App() {
     }, [venueToDelete]);
 
     const handleSaveVenue = async (venueData: any) => {
+<<<<<<< Updated upstream
         try {
             const saved = await db.upsertVenue(venueData);
             if (editingVenue) {
@@ -141,6 +155,14 @@ function App() {
             setSelectedVenue(null);
         } catch (err) {
             alert('Failed to save to database. Ensure Supabase keys are configured.');
+=======
+        const saved = await db.upsertVenue(venueData);
+        if (editingVenue) {
+            setVenues(prev => prev.map(old => old.id === saved.id ? saved : old));
+            setSavedDetails(prev => prev.map(old => old.id === saved.id ? saved : old));
+        } else {
+            setVenues(prev => [...prev, saved]);
+>>>>>>> Stashed changes
         }
     };
 
@@ -246,7 +268,7 @@ function App() {
                             <h2 className="text-3xl md:text-4xl font-black tracking-tight">Manage Courts</h2>
                             <button 
                                 onClick={() => { setEditingVenue(null); setShowVenueForm(true); }} 
-                                className="px-4 py-3 md:px-6 md:py-3 bg-[#00e911] text-white rounded-2xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
+                                className="px-4 py-3 md:px-6 md:py-3 bg-[#007a67] text-white rounded-lg font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
                             >
                                 + ADD NEW
                             </button>
@@ -330,13 +352,21 @@ function App() {
                             <div className="flex flex-col gap-3 pt-6">
                                 <button 
                                     onClick={confirmDeleteAction}
+<<<<<<< Updated upstream
                                     className="w-full py-4 bg-red-500 text-white rounded-2xl font-black shadow-lg shadow-red-500/30 active:scale-95 transition-all"
+=======
+                                    className="w-full py-4 bg-red-500 text-white rounded-lg font-black"
+>>>>>>> Stashed changes
                                 >
                                     {language === 'en' ? 'YES, DELETE IT' : '確定刪除'}
                                 </button>
                                 <button 
                                     onClick={() => setVenueToDelete(null)}
+<<<<<<< Updated upstream
                                     className={`w-full py-4 rounded-2xl font-black active:scale-95 transition-all ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-700'}`}
+=======
+                                    className={`w-full py-4 rounded-lg font-black ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
+>>>>>>> Stashed changes
                                 >
                                     {language === 'en' ? 'NO, CANCEL' : '取消'}
                                 </button>

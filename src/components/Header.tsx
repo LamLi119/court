@@ -1,6 +1,5 @@
 import React from 'react';
 import { Language, AppTab } from '../../types.ts';
-import logo from '@/assets/green-G.svg';
 
 interface HeaderProps {
     language: Language;
@@ -16,6 +15,9 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ language, setLanguage, isAdmin, onLogout, darkMode, setDarkMode, t, currentTab, setTab }) => {
+    // Correct path relative to index.html and correct filename based on project structure
+    const logoUrl = "src/assets/green-G.svg";
+
     return (
         <header className={`sticky top-0 z-[60] ${darkMode ? 'bg-gray-900/95' : 'bg-white/95'} backdrop-blur-md border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'} shadow-sm`}>
             <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -23,11 +25,11 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage, isAdmin, onLogou
                     <div className="flex items-center gap-2.5 cursor-pointer group" onClick={() => setTab('explore')}>
                         <div className="w-10 h-10 transition-transform duration-300 group-hover:rotate-12 group-active:scale-90 flex items-center justify-center">
                             <img 
-                                src={logo} 
+                                src={logoUrl} 
                                 className="w-full h-full object-contain" 
                                 alt="The Ground Logo" 
                                 onError={(e) => {
-                                    console.error("Logo file could not be found or loaded at " + logo);
+                                    console.error("Logo file could not be found or loaded at " + logoUrl);
                                 }}
                             />
                         </div>

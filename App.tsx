@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Venue, Language, AppTab } from './types.ts';
-import { translate } from './utils/translations.ts';
+import { translate } from './src/utils/translations.ts';
 import { db } from './db.ts';
-import Header from './components/Header.tsx';
-import AdminLogin from './components/AdminLogin.tsx';
-import DesktopView from './components/DesktopView.tsx';
-import MobileView from './components/MobileView.tsx';
-import MobileNav from './components/MobileNav.tsx';
-import VenueDetail from './components/VenueDetail.tsx';
-import VenueForm from './components/VenueForm.tsx';
+import Header from './src/components/Header.tsx';
+import AdminLogin from './src/components/AdminLogin.tsx';
+import DesktopView from './src/components/DesktopView.tsx';
+import MobileView from './src/components/MobileView.tsx';
+import MobileNav from './src/components/MobileNav.tsx';
+import VenueDetail from './src/components/VenueDetail.tsx';
+import VenueForm from './src/components/VenueForm.tsx';
 
 function App() {
     const [language, setLanguage] = useState<Language>('en');
@@ -151,7 +151,6 @@ function App() {
     }, [venueToDelete]);
 
     const handleSaveVenue = async (venueData: any) => {
-        // Return promise so VenueForm can handle its own state
         const saved = await db.upsertVenue(venueData);
         if (editingVenue) {
             setVenues(prev => prev.map(old => old.id === saved.id ? saved : old));
@@ -352,13 +351,13 @@ function App() {
                             <div className="flex flex-col gap-3 pt-6">
                                 <button 
                                     onClick={confirmDeleteAction}
-                                    className="w-full py-4 bg-red-500 text-white rounded-2xl font-black"
+                                    className="w-full py-4 bg-red-500 text-white rounded-lg font-black"
                                 >
                                     {language === 'en' ? 'YES, DELETE IT' : '確定刪除'}
                                 </button>
                                 <button 
                                     onClick={() => setVenueToDelete(null)}
-                                    className={`w-full py-4 rounded-2xl font-black ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
+                                    className={`w-full py-4 rounded-lg font-black ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
                                 >
                                     {language === 'en' ? 'NO, CANCEL' : '取消'}
                                 </button>

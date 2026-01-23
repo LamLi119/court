@@ -1,8 +1,7 @@
-
 import React from 'react';
-import { Venue, Language } from '../types';
-import CourtCard from './CourtCard';
-import MapView from './MapView';
+import { Venue, Language } from '../types.ts';
+import CourtCard from './CourtCard.tsx';
+import MapView from './MapView.tsx';
 
 interface DesktopViewProps {
     venues: Venue[];
@@ -23,14 +22,14 @@ interface DesktopViewProps {
     onAddVenue: () => void;
     onEditVenue: (id: number, v: any) => void;
     onDeleteVenue: (id: number) => void;
+    availableStations: string[];
 }
 
 const DesktopView: React.FC<DesktopViewProps> = (props) => {
-    const { venues, selectedVenue, onSelectVenue, searchQuery, setSearchQuery, mtrFilter, setMtrFilter, distanceFilter, setDistanceFilter, language, t, darkMode, savedVenues, toggleSave, isAdmin, onAddVenue } = props;
+    const { venues, selectedVenue, onSelectVenue, searchQuery, setSearchQuery, mtrFilter, setMtrFilter, distanceFilter, setDistanceFilter, language, t, darkMode, savedVenues, toggleSave, isAdmin, onAddVenue, availableStations } = props;
 
     return (
         <div className="flex h-[calc(100vh-64px)] overflow-hidden">
-            {/* Sidebar */}
             <div className={`w-[400px] xl:w-[450px] flex-shrink-0 border-r transition-colors flex flex-col ${darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
                 <div className={`p-6 space-y-4 shadow-sm z-10 ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
                     <div className="relative">
@@ -44,20 +43,24 @@ const DesktopView: React.FC<DesktopViewProps> = (props) => {
                         />
                     </div>
                     <div className="flex gap-2">
-                        <select
-                            value={mtrFilter}
-                            onChange={(e) => setMtrFilter(e.target.value)}
-                            className={`flex-1 px-3 py-2 border rounded-xl text-sm font-bold appearance-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
-                        >
-                            <option value="">{t('allStations')}</option>
-                            <option value="Kwun Tong">Kwun Tong</option>
-                            <option value="Causeway Bay">Causeway Bay</option>
-                            <option value="Tsim Sha Tsui">Tsim Sha Tsui</option>
-                        </select>
+                        <div className="flex-1 relative">
+                            <input
+                                list="station-list"
+                                value={mtrFilter}
+                                onChange={(e) => setMtrFilter(e.target.value)}
+                                placeholder={t('mtrStation')}
+                                className={`w-full px-3 py-2 border rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#00e911] focus:outline-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                            />
+                            <datalist id="station-list">
+                                {availableStations.map(station => (
+                                    <option key={station} value={station} />
+                                ))}
+                            </datalist>
+                        </div>
                         <select
                             value={distanceFilter}
                             onChange={(e) => setDistanceFilter(e.target.value)}
-                            className={`flex-1 px-3 py-2 border rounded-xl text-sm font-bold appearance-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                            className={`flex-[0.8] px-3 py-2 border rounded-xl text-sm font-bold appearance-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                         >
                             <option value="">{t('allDistances')}</option>
                             <option value="5">{t('lessThan5')}</option>
@@ -67,7 +70,7 @@ const DesktopView: React.FC<DesktopViewProps> = (props) => {
                     {isAdmin && (
                         <button
                             onClick={onAddVenue}
-                            className="w-full px-4 py-3 bg-[#00e911] text-white rounded-xl font-bold shadow-lg hover:brightness-110 active:scale-[0.98] transition-all"
+                            className="w-full px-4 py-3 bg-[#00e911] text-white rounded-xl font-bold shadow-lg"
                         >
                             ✨ {t('addVenue')}
                         </button>
@@ -97,7 +100,6 @@ const DesktopView: React.FC<DesktopViewProps> = (props) => {
                 </div>
             </div>
 
-            {/* Map Area */}
             <div className="flex-1 relative">
                 <MapView
                     venues={venues}

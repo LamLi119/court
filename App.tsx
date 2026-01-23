@@ -268,7 +268,7 @@ function App() {
                             <h2 className="text-3xl md:text-4xl font-black tracking-tight">Manage Courts</h2>
                             <button 
                                 onClick={() => { setEditingVenue(null); setShowVenueForm(true); }} 
-                                className="px-4 py-3 md:px-6 md:py-3 bg-[#00e911] text-white rounded-2xl font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
+                                className="px-4 py-3 md:px-6 md:py-3 bg-[#007a67] text-white rounded-lg font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
                             >
                                 + ADD NEW
                             </button>

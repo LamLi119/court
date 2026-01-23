@@ -3,8 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 import { Venue } from './types';
 
 // REPLACE THESE with your actual project values from Supabase Settings > API
-const SUPABASE_URL = 'https://kgxiomuywilpevsjsoeg.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_UkaLkiG4oFktXNCrGBigRA_lVUcreUM';
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('Missing Supabase configuration. Please ensure SUPABASE_URL and SUPABASE_ANON_KEY are set in your environment.');
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

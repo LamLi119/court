@@ -16,7 +16,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ language, setLanguage, isAdmin, onLogout, darkMode, setDarkMode, t, currentTab, setTab }) => {
     // Correct path relative to index.html and correct filename based on project structure
-    const logoUrl = "src/assets/gray-G.png";
+    const logoUrl = "/src/assets/green-G.svg";
 
     return (
         <header className={`sticky top-0 z-[60] ${darkMode ? 'bg-gray-900/95' : 'bg-white/95'} backdrop-blur-md border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'} shadow-sm`}>

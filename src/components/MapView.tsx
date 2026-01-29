@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Venue, Language } from '../types';
+import { Venue, Language } from '../../types.ts';
 
 declare var google: any;
 
@@ -11,7 +11,7 @@ interface MapViewProps {
     darkMode: boolean;
 }
 
-const PIN_COLOR = "#00e911";
+const PIN_COLOR = "#007a67";
 const PIN_STROKE = "#ffffff";
 
 const MAP_STYLES = [
@@ -148,7 +148,7 @@ const MapView: React.FC<MapViewProps> = ({ venues, selectedVenue, onSelectVenue,
                 <div className="mt-8 flex flex-col gap-2">
                     <button 
                         onClick={() => window.location.reload()}
-                        className={`px-6 py-3 rounded-2xl font-black text-xs transition-all active:scale-95 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white shadow-md text-gray-900'}`}
+                        className={`px-6 py-3 rounded-lg font-black text-xs transition-all active:scale-95 ${darkMode ? 'bg-gray-700 text-white' : 'bg-white shadow-md text-gray-900'}`}
                     >
                         {language === 'en' ? 'RETRY LOADING' : '重新整理'}
                     </button>

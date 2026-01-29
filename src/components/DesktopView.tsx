@@ -1,5 +1,5 @@
 import React from 'react';
-import { Venue, Language } from '../types.ts';
+import { Venue, Language } from '../../types.ts';
 import CourtCard from './CourtCard.tsx';
 import MapView from './MapView.tsx';
 
@@ -39,7 +39,7 @@ const DesktopView: React.FC<DesktopViewProps> = (props) => {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder={t('search')}
-                            className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00e911] focus:outline-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                            className={`w-full pl-10 pr-4 py-3 border rounded-[12px] focus:ring-2 focus:ring-[#007a67] focus:outline-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                         />
                     </div>
                     <div className="flex gap-2">
@@ -49,7 +49,7 @@ const DesktopView: React.FC<DesktopViewProps> = (props) => {
                                 value={mtrFilter}
                                 onChange={(e) => setMtrFilter(e.target.value)}
                                 placeholder={t('mtrStation')}
-                                className={`w-full px-3 py-2 border rounded-xl text-sm font-bold focus:ring-2 focus:ring-[#00e911] focus:outline-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                                className={`w-full px-3 py-2 border rounded-[8px] text-sm font-bold focus:ring-2 focus:ring-[#007a67] focus:outline-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                             />
                             <datalist id="station-list">
                                 {availableStations.map(station => (
@@ -60,7 +60,7 @@ const DesktopView: React.FC<DesktopViewProps> = (props) => {
                         <select
                             value={distanceFilter}
                             onChange={(e) => setDistanceFilter(e.target.value)}
-                            className={`flex-[0.8] px-3 py-2 border rounded-xl text-sm font-bold appearance-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
+                            className={`flex-[0.8] px-3 py-2 border rounded-[8px] text-sm font-bold appearance-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'}`}
                         >
                             <option value="">{t('allDistances')}</option>
                             <option value="5">{t('lessThan5')}</option>
@@ -70,7 +70,7 @@ const DesktopView: React.FC<DesktopViewProps> = (props) => {
                     {isAdmin && (
                         <button
                             onClick={onAddVenue}
-                            className="w-full px-4 py-3 bg-[#00e911] text-white rounded-xl font-bold shadow-lg"
+                            className="w-full px-4 py-3 bg-[#007a67] text-white rounded-[8px] font-bold shadow-lg"
                         >
                             ✨ {t('addVenue')}
                         </button>

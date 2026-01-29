@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Venue, Language } from '../types';
+import { Venue, Language } from '../../types.ts';
 
 declare var google: any;
 
@@ -78,7 +78,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
     }, []);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
+        const files = Array.from(e.target.files || []) as File[];
         if (files.length === 0) return;
 
         setIsUploading(true);
@@ -88,7 +88,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                 return new Promise<string>((resolve) => {
                     const reader = new FileReader();
                     reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(file);
+                    reader.readAsDataURL(file as Blob);
                 });
             });
 
@@ -99,7 +99,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
             }));
         } catch (err) {
             console.error("Upload failed", err);
-            setSaveError("Failed to upload photos. Please try smaller files.");
+            setSaveError("Failed to upload photos.");
         } finally {
             setIsUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -116,7 +116,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
             const result = await new Promise<string>((resolve) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve(reader.result as string);
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(file as Blob);
             });
 
             setFormData((prev: any) => ({
@@ -135,15 +135,12 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (isUploading || isSaving) return;
-        
         setIsSaving(true);
         setSaveError(null);
-        
         try {
             await onSave(formData);
         } catch (err: any) {
-            console.error("Error in onSave:", err);
-            setSaveError(err.message || "An unexpected error occurred while saving. Please check your connection.");
+            setSaveError(err.message || "An unexpected error occurred while saving.");
         } finally {
             setIsSaving(false);
         }
@@ -154,34 +151,37 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
         onDelete?.(venue.id);
     };
 
-    const labelClass = `block mb-1 text-xs font-black uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`;
-    const inputClass = `w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#00e911] focus:outline-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`;
+    const labelClass = `block mb-1 text-[12px] font-[900] uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`;
+    const inputClass = `w-full px-4 py-3 border rounded-[12px] focus:ring-2 focus:ring-[#007a67] focus:outline-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`;
 
     return (
-        <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-0 md:p-4">
-            <div className={`w-full max-w-4xl h-full md:h-[90vh] flex flex-col shadow-2xl ${darkMode ? 'bg-gray-800' : 'bg-white'} md:rounded-3xl animate-in zoom-in duration-300 overflow-hidden`}>
+        <div 
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="venue-form-title"
+            className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-0 md:p-4"
+        >
+            <div className={`w-full max-w-4xl h-full md:h-[90vh] flex flex-col shadow-2xl ${darkMode ? 'bg-gray-800' : 'bg-white'} md:rounded-[16px] animate-in zoom-in duration-300 overflow-hidden`}>
                 <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-inherit">
-                    <h2 className="text-2xl font-black">Court Management</h2>
-                    <button onClick={onCancel} className="text-3xl font-light hover:opacity-50 transition-opacity">×</button>
+                    <h2 id="venue-form-title" className="text-[24px] font-[900]">Court Management</h2>
+                    <button onClick={onCancel} className="text-3xl font-light hover:opacity-50 transition-opacity" aria-label="Close form">×</button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
-                    {/* Error Alarm */}
                     {saveError && (
-                        <div className="animate-in slide-in-from-top-4 duration-300 p-4 bg-red-500 rounded-2xl flex items-start gap-3 shadow-lg shadow-red-500/20">
+                        <div className="animate-in slide-in-from-top-4 duration-300 p-4 bg-red-500 rounded-[12px] flex items-start gap-3 shadow-lg shadow-red-500/20">
                             <span className="text-2xl">⚠️</span>
                             <div className="flex-1">
-                                <h4 className="text-white font-black text-xs uppercase tracking-widest mb-1">Save Failed</h4>
-                                <p className="text-white text-xs font-bold leading-relaxed">{saveError}</p>
+                                <h4 className="text-white font-[900] text-[12px] uppercase tracking-widest mb-1">Save Failed</h4>
+                                <p className="text-white text-[12px] font-[700] leading-relaxed">{saveError}</p>
                             </div>
-                            <button onClick={() => setSaveError(null)} className="text-white/60 hover:text-white font-black text-xl">×</button>
+                            <button onClick={() => setSaveError(null)} className="text-white/60 hover:text-white font-[900] text-xl">×</button>
                         </div>
                     )}
 
                     <div className="relative">
                         <label className={labelClass}>
                             {language === 'en' ? 'Full Address *' : '詳細地址 *'} 
-                            {placesApiError && <span className="text-red-500 ml-2">(Autocomplete Blocked)</span>}
                         </label>
                         <input 
                             type="text"
@@ -190,18 +190,8 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                             onChange={e => setFormData({...formData, address: e.target.value})} 
                             className={inputClass} 
                             required 
-                            placeholder={placesApiError ? "Manual address entry required..." : "Start typing building or street name..."}
+                            placeholder="Start typing building or street name..."
                         />
-                        {placesApiError && (
-                            <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg text-[10px] font-bold text-red-500">
-                                {language === 'en' 
-                                    ? "Places API is blocked. Address must be entered manually and map coordinates will default to HK center." 
-                                    : "地點搜尋 API 被阻擋。地址需手動輸入，且地圖座標將預設為香港中心。"}
-                            </div>
-                        )}
-                        <div className="mt-2 flex items-center justify-between px-1">
-                            <span className="text-[10px] font-bold opacity-40 uppercase">GPS Sync: {formData.coordinates.lat.toFixed(4)}, {formData.coordinates.lng.toFixed(4)}</span>
-                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -216,7 +206,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                             </div>
                             <div>
                                 <label className={labelClass}>MTR Exit</label>
-                                <input type="text" value={formData.mtrExit} onChange={e => setFormData({...formData, mtrExit: e.target.value})} className={inputClass} placeholder="e.g. A1" />
+                                <input type="text" value={formData.mtrExit} onChange={e => setFormData({...formData, mtrExit: e.target.value})} className={inputClass} />
                             </div>
                         </div>
                     </div>
@@ -238,18 +228,18 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                         <label className={labelClass}>Photos (Max 12)</label>
                         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
                             {formData.images.map((img: string, i: number) => (
-                                <div key={i} className="relative aspect-square rounded-xl overflow-hidden border dark:border-gray-600">
+                                <div key={i} className="relative aspect-square rounded-[12px] overflow-hidden border dark:border-gray-600">
                                     <img src={img} className="w-full h-full object-cover" alt="" />
                                     <button type="button" onClick={() => setFormData({...formData, images: formData.images.filter((_:any, idx:number) => idx !== i)})} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs">×</button>
                                 </div>
                             ))}
                             {isUploading && (
-                                <div className="aspect-square rounded-xl border-2 border-dashed border-[#00e911] flex items-center justify-center bg-[#00e911]/5">
-                                    <div className="w-6 h-6 border-2 border-[#00e911]/20 border-l-[#00e911] rounded-full animate-spin"></div>
+                                <div className="aspect-square rounded-[12px] border-2 border-dashed border-[#007a67] flex items-center justify-center bg-[#007a67]/5">
+                                    <div className="w-6 h-6 border-2 border-[#007a67]/20 border-l-[#007a67] rounded-full animate-spin"></div>
                                 </div>
                             )}
                             {formData.images.length < 12 && !isUploading && (
-                                <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-xl border-2 border-dashed flex items-center justify-center text-gray-400 hover:border-[#00e911] hover:text-[#00e911] transition-all bg-gray-50 dark:bg-gray-700/30">
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="aspect-square rounded-[12px] border-2 border-dashed flex items-center justify-center text-gray-400 hover:border-[#007a67] hover:text-[#007a67] transition-all bg-gray-50 dark:bg-gray-700/30">
                                     <span className="text-2xl">+</span>
                                 </button>
                             )}
@@ -258,29 +248,22 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                     </div>
 
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <label className={labelClass}>Pricing Info</label>
-                            <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-lg text-[10px] font-black">
-                                <button type="button" onClick={() => setFormData({...formData, pricing: {...formData.pricing, type: 'text'}})} className={`px-3 py-1 rounded ${formData.pricing.type === 'text' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'opacity-40'}`}>TEXT</button>
-                                <button type="button" onClick={() => setFormData({...formData, pricing: {...formData.pricing, type: 'image'}})} className={`px-3 py-1 rounded ${formData.pricing.type === 'image' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'opacity-40'}`}>IMAGE</button>
-                            </div>
+                        <label className={labelClass}>Pricing Info</label>
+                        <div className="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-[8px] text-[10px] font-[900]">
+                            <button type="button" onClick={() => setFormData({...formData, pricing: {...formData.pricing, type: 'text'}})} className={`px-3 py-1 rounded-[6px] ${formData.pricing.type === 'text' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'opacity-40'}`}>TEXT</button>
+                            <button type="button" onClick={() => setFormData({...formData, pricing: {...formData.pricing, type: 'image'}})} className={`px-3 py-1 rounded-[6px] ${formData.pricing.type === 'image' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'opacity-40'}`}>IMAGE</button>
                         </div>
                         {formData.pricing.type === 'text' ? (
                             <textarea value={formData.pricing.content} onChange={e => setFormData({...formData, pricing: {...formData.pricing, content: e.target.value}})} className={`${inputClass} h-24`} />
                         ) : (
-                            <div className="relative h-40 border-2 border-dashed rounded-xl flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 overflow-hidden">
-                                {isUploading ? (
-                                    <div className="flex flex-col items-center gap-2">
-                                        <div className="w-8 h-8 border-3 border-[#00e911]/20 border-l-[#00e911] rounded-full animate-spin"></div>
-                                        <span className="text-[10px] font-black text-[#00e911] uppercase tracking-widest">Processing...</span>
-                                    </div>
-                                ) : formData.pricing.imageUrl ? (
+                            <div className="relative h-40 border-2 border-dashed rounded-[12px] flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 overflow-hidden">
+                                {formData.pricing.imageUrl ? (
                                     <>
                                         <img src={formData.pricing.imageUrl} className="h-full w-full object-contain" alt="" />
-                                        <button type="button" onClick={() => setFormData({...formData, pricing: {...formData.pricing, imageUrl: ''}})} className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full shadow-lg">×</button>
+                                        <button type="button" onClick={() => setFormData({...formData, pricing: {...formData.pricing, imageUrl: ''}})} className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full">×</button>
                                     </>
                                 ) : (
-                                    <button type="button" onClick={() => pricingImageRef.current?.click()} className="text-xs font-bold text-gray-400">Upload Price Chart</button>
+                                    <button type="button" onClick={() => pricingImageRef.current?.click()} className="text-xs font-bold text-gray-400">Upload Pricing Image</button>
                                 )}
                                 <input type="file" ref={pricingImageRef} className="hidden" accept="image/*" onChange={handlePricingImageUpload} />
                             </div>
@@ -288,20 +271,18 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                     </div>
                 </form>
 
-                <div className="p-6 border-t dark:border-gray-700 flex gap-4 bg-white dark:bg-gray-800 md:rounded-b-3xl">
+                <div className="p-6 border-t dark:border-gray-700 flex gap-4 bg-white dark:bg-gray-800 md:rounded-b-[16px]">
                     <button 
                         type="submit" 
                         onClick={handleSubmit} 
                         disabled={isUploading || isSaving}
-                        className={`flex-1 px-6 py-4 rounded-2xl font-black text-lg shadow-xl active:scale-95 transition-all uppercase flex items-center justify-center gap-3 ${isUploading || isSaving ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed opacity-80' : 'bg-[#00e911] text-white hover:brightness-105'}`}
+                        className={`flex-1 px-6 py-4 rounded-[8px] font-[900] text-lg shadow-xl active:scale-95 transition-all uppercase flex items-center justify-center gap-3 ${isUploading || isSaving ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-[#007a67] text-white hover:brightness-105'}`}
                     >
-                        {(isUploading || isSaving) && (
-                            <div className="w-5 h-5 border-3 border-white/20 border-l-white rounded-full animate-spin"></div>
-                        )}
-                        {isSaving ? 'Saving...' : isUploading ? 'Uploading...' : 'Save Court'}
+                        {(isUploading || isSaving) && <div className="w-5 h-5 border-3 border-white/20 border-l-white rounded-full animate-spin"></div>}
+                        {isSaving ? 'Saving...' : 'Save Court'}
                     </button>
                     {venue && !isSaving && (
-                        <button type="button" onClick={handleDelete} className="px-6 py-4 bg-red-500 text-white rounded-2xl font-black active:scale-95 transition-all">DELETE</button>
+                        <button type="button" onClick={handleDelete} className="px-6 py-4 bg-red-500 text-white rounded-[8px] font-[900] active:scale-95 transition-all">DELETE</button>
                     )}
                 </div>
             </div>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 
 interface ImageCarouselProps {
@@ -41,7 +40,7 @@ const ImageCarousel: React.FC<ImageCarouselProps> = ({ images }) => {
               {images.map((_, i) => (
                 <div 
                   key={i} 
-                  className={`w-1.5 h-1.5 rounded-full transition-all ${i === index ? 'bg-[#13ec5b] w-3' : 'bg-white/60'}`}
+                  className={`w-1.5 h-1.5 rounded-full transition-all ${i === index ? 'bg-[#007a67] w-3' : 'bg-white/60'}`}
                 />
               ))}
             </div>

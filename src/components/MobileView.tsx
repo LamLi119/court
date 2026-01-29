@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Venue, Language } from '../types.ts';
+import { Venue, Language } from '../../types.ts';
 import MapView from './MapView.tsx';
 import MobileVenueCard from './MobileVenueCard.tsx';
 import VenueDetail from './VenueDetail.tsx';
@@ -28,25 +28,17 @@ type SheetState = 'hidden' | 'mini' | 'expanded';
 
 const MobileView: React.FC<MobileViewProps> = (props) => {
     const { venues, selectedVenue, onSelectVenue, searchQuery, setSearchQuery, mtrFilter, setMtrFilter, distanceFilter, setDistanceFilter, language, t, darkMode, savedVenues, toggleSave, isAdmin, onEditVenue, availableStations } = props;
-    
     const [sheetState, setSheetState] = useState<SheetState>('hidden');
     const [showDetailPage, setShowDetailPage] = useState(false);
-    
     const touchStartY = useRef<number | null>(null);
     const lastDeltaY = useRef<number>(0);
 
     useEffect(() => {
-        if (selectedVenue) {
-            setSheetState('mini');
-        } else {
-            setSheetState('hidden');
-        }
+        if (selectedVenue) setSheetState('mini');
+        else setSheetState('hidden');
     }, [selectedVenue]);
 
-    const handleTouchStart = (e: React.TouchEvent) => {
-        touchStartY.current = e.touches[0].clientY;
-    };
-
+    const handleTouchStart = (e: React.TouchEvent) => { touchStartY.current = e.touches[0].clientY; };
     const handleTouchMove = (e: React.TouchEvent) => {
         if (touchStartY.current === null) return;
         const currentY = e.touches[0].clientY;
@@ -57,15 +49,10 @@ const MobileView: React.FC<MobileViewProps> = (props) => {
         if (touchStartY.current === null) return;
         const delta = lastDeltaY.current;
         const threshold = 50; 
-
-        if (delta < -threshold) {
-            setSheetState('expanded');
-        } else if (delta > threshold) {
-            if (sheetState === 'expanded') {
-                setSheetState('mini');
-            } else if (sheetState === 'mini') {
-                onSelectVenue(null);
-            }
+        if (delta < -threshold) setSheetState('expanded');
+        else if (delta > threshold) {
+            if (sheetState === 'expanded') setSheetState('mini');
+            else if (sheetState === 'mini') onSelectVenue(null);
         }
         touchStartY.current = null;
         lastDeltaY.current = 0;
@@ -105,7 +92,7 @@ const MobileView: React.FC<MobileViewProps> = (props) => {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         placeholder={t('search')}
-                        className={`w-full px-6 py-4 border rounded-[20px] shadow-2xl focus:ring-2 focus:ring-[#00e911] focus:outline-none transition-all ${darkMode ? 'bg-gray-800/90 border-gray-700 text-white backdrop-blur' : 'bg-white/90 border-gray-100 text-gray-900 backdrop-blur'}`}
+                        className={`w-full px-6 py-4 border rounded-[16px] shadow-2xl focus:ring-2 focus:ring-[#007a67] focus:outline-none transition-all ${darkMode ? 'bg-gray-800/90 border-gray-700 text-white backdrop-blur' : 'bg-white/90 border-gray-100 text-gray-900 backdrop-blur'}`}
                     />
                 </div>
                 <div className="flex gap-2 pb-2 pointer-events-auto overflow-hidden">
@@ -115,7 +102,7 @@ const MobileView: React.FC<MobileViewProps> = (props) => {
                             value={mtrFilter}
                             onChange={(e) => setMtrFilter(e.target.value)}
                             placeholder={t('mtrStation')}
-                            className={`w-full px-4 py-2 border rounded-full text-xs font-black shadow-md focus:ring-2 focus:ring-[#00e911] focus:outline-none transition-all ${darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white border-gray-100'}`}
+                            className={`w-full px-4 py-2 border rounded-[8px] text-[12px] font-[700] shadow-md focus:ring-2 focus:ring-[#007a67] focus:outline-none transition-all ${darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white border-gray-100'}`}
                         />
                         <datalist id="station-list-mobile">
                             {availableStations.map(station => (
@@ -126,7 +113,7 @@ const MobileView: React.FC<MobileViewProps> = (props) => {
                     <select
                         value={distanceFilter}
                         onChange={(e) => setDistanceFilter(e.target.value)}
-                        className={`flex-[0.7] px-4 py-2 border rounded-full text-xs font-black shadow-md appearance-none transition-all whitespace-nowrap ${darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white border-gray-100'}`}
+                        className={`flex-[0.7] px-4 py-2 border rounded-[8px] text-[12px] font-[700] shadow-md appearance-none transition-all whitespace-nowrap ${darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white border-gray-100'}`}
                     >
                         <option value="">{t('allDistances')}</option>
                         <option value="5">{t('lessThan5')}</option>

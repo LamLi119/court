@@ -3,8 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 import { Venue } from './types';
 
 // REPLACE THESE with your actual project values from Supabase Settings > API
-const SUPABASE_URL = 'https://kgxiomuywilpevsjsoeg.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_UkaLkiG4oFktXNCrGBigRA_lVUcreUM';
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    console.error('Missing Supabase configuration. Please ensure SUPABASE_URL and SUPABASE_ANON_KEY are set in your environment.');
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -23,14 +27,11 @@ export const db = {
     },
 
     async upsertVenue(venue: Partial<Venue>): Promise<Venue> {
-        // Separate ID from data to avoid identity constraint issues
+        // Remove the id for new venues to let Postgres generate it
         const { id, ...dataToSave } = venue;
         
-        // If ID exists, we are updating. Use .update() filtered by ID.
-        // If ID doesn't exist, we are creating. Use .insert().
-        // We do NOT use .upsert() here because the 'id' column is GENERATED ALWAYS.
         const query = id 
-            ? supabase.from('venues').update(dataToSave).eq('id', id).select().single()
+            ? supabase.from('venues').upsert({ ...dataToSave, id }).select().single()
             : supabase.from('venues').insert(dataToSave).select().single();
 
         const { data, error } = await query;

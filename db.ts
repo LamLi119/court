@@ -27,12 +27,26 @@ export const db = {
     },
 
     async upsertVenue(venue: Partial<Venue>): Promise<Venue> {
-        // Remove the id for new venues to let Postgres generate it
+        // Strict separation of insert/update to handle GENERATED ALWAYS identity columns
         const { id, ...dataToSave } = venue;
         
-        const query = id 
-            ? supabase.from('venues').upsert({ ...dataToSave, id }).select().single()
-            : supabase.from('venues').insert(dataToSave).select().single();
+        let query;
+        if (id) {
+            // Updating existing venue
+            query = supabase
+                .from('venues')
+                .update(dataToSave)
+                .eq('id', id)
+                .select()
+                .single();
+        } else {
+            // Creating new venue - do NOT include id in the payload
+            query = supabase
+                .from('venues')
+                .insert(dataToSave)
+                .select()
+                .single();
+        }
 
         const { data, error } = await query;
 

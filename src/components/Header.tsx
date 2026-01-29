@@ -39,14 +39,14 @@ const Header: React.FC<HeaderProps> = ({
                 <div className="flex items-center gap-4 md:gap-8">
                     <div className="flex items-center gap-2.5 cursor-pointer group" onClick={() => setTab('explore')}>
                         <div className="w-10 h-10 transition-transform duration-300 group-hover:rotate-12 group-active:scale-90 flex items-center justify-center">
-                            <img 
+                            {/* <img 
                                 src={logoUrl} 
                                 className="w-full h-full object-contain" 
                                 alt="The Ground Logo" 
                                 onError={(_e: any) => {
                                     console.error("Logo file could not be found or loaded at " + logoUrl);
                                 }}
-                            />
+                            /> */}
                         </div>
                         <h1 className="hidden sm:block text-[20px] font-[900] tracking-tighter text-[#007a67]">THE GROUND</h1>
                     </div>

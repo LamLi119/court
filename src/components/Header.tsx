@@ -6,17 +6,32 @@ interface HeaderProps {
     setLanguage: (l: Language) => void;
     isAdmin: boolean;
     onAdminClick: () => void;
-    onLogout: () => void;
+    onLogout?: () => void;
     darkMode: boolean;
     setDarkMode: (d: boolean) => void;
     t: (key: string) => string;
     currentTab: AppTab;
     setTab: (t: AppTab) => void;
+    viewMode?: 'map' | 'list';
+    setViewMode?: (mode: 'map' | 'list') => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ language, setLanguage, isAdmin, onLogout, darkMode, setDarkMode, t, currentTab, setTab }) => {
-    // Correct path relative to index.html and correct filename based on project structure
-    const logoUrl = "/src/assets/green-G.svg";
+const Header: React.FC<HeaderProps> = ({ 
+    language, 
+    setLanguage, 
+    isAdmin,
+    onAdminClick,
+    onLogout,
+    darkMode, 
+    setDarkMode, 
+    t, 
+    currentTab, 
+    setTab, 
+    viewMode, 
+    setViewMode 
+}) => {
+    // Relative path for the logo from root where index.html is
+    const logoUrl = "assets/green-G.svg";
 
     return (
         <header className={`sticky top-0 z-[60] ${darkMode ? 'bg-gray-900/95' : 'bg-white/95'} backdrop-blur-md border-b ${darkMode ? 'border-gray-800' : 'border-gray-200'} shadow-sm`}>
@@ -44,29 +59,14 @@ const Header: React.FC<HeaderProps> = ({ language, setLanguage, isAdmin, onLogou
                 </div>
                 
                 <div className="flex items-center gap-2 md:gap-4">
-                    <a 
-                        href="https://www.theground.io" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="hidden sm:flex px-4 py-2 bg-[#007a67] text-white rounded-[8px] font-[700] text-[12px] shadow-sm hover:brightness-110 active:scale-95 transition-all"
-                    >
-                        {t('findEvents')}
-                    </a>
-
                     <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-[8px] transition-all ${darkMode ? 'bg-gray-800 text-yellow-400' : 'bg-gray-100 text-gray-700'}`}>
                         {darkMode ? '☀️' : '🌙'}
                     </button>
 
-                    <div className={`flex ${darkMode ? 'bg-gray-800' : 'bg-gray-100' } rounded-[8px] p-1`}>
+                    <div className={`flex ${darkMode ? 'bg-gray-800' : 'bg-white' } rounded-[8px] p-1 border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
                         <button onClick={() => setLanguage('en')} className={`px-2 md:px-3 py-1 text-[10px] md:text-[11px] font-[900] rounded-[6px] ${language === 'en' ? 'bg-[#007a67] text-white shadow' : 'text-gray-400'}`}>EN</button>
                         <button onClick={() => setLanguage('zh')} className={`px-2 md:px-3 py-1 text-[10px] md:text-[11px] font-[900] rounded-[6px] ${language === 'zh' ? 'bg-[#007a67] text-white shadow' : 'text-gray-400'}`}>中文</button>
                     </div>
-
-                    {isAdmin && (
-                        <button onClick={onLogout} className="hidden sm:block px-4 py-2 bg-red-500 text-white rounded-[8px] font-bold text-xs shadow-lg">
-                            {t('logout')}
-                        </button>
-                    )}
                 </div>
             </div>
         </header>

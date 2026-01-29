@@ -3,18 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Ground Court Finder🔍</title>
-    <link rel="icon" type="image/svg+xml" href="src/assets/green-G.svg">
+    <title>The Ground Court Finder</title>
+    <link rel="icon" type="image/svg+xml" href="assets/green-G.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
-            font-family: 'DM Sans', sans-serif;
+            font-family: 'Noto Sans', 'Noto Sans TC', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Lexend', sans-serif;
         }
         :root {
-            --brand-teal: #007a67;
+            /* Synced to brand green */
+            --sporty-green: #007a67;
         }
         
         .custom-scrollbar::-webkit-scrollbar {
@@ -62,19 +66,7 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
-        /* Overrides for consistent radii and sizing */
-        .brand-card { border-radius: 16px !important; }
-        .brand-btn { border-radius: 8px !important; }
-        .brand-title { font-size: 24px !important; font-weight: 900 !important; }
-        .brand-subtitle { font-size: 14px !important; font-weight: 400 !important; }
     </style>
-    <script>
-        window.gm_authFailure = function() {
-            console.error("Google Maps failed to authenticate. Check API Key restrictions.");
-            window.dispatchEvent(new CustomEvent('google-maps-auth-error'));
-        };
-    </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEwqejoSWN948Sj89y3SQnr5o-bb4o7-g&libraries=places"></script>
 <script type="importmap">
 {
@@ -83,9 +75,8 @@
     "react-dom": "https://esm.sh/react-dom@19.0.0",
     "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.7",
-    "react/": "https://esm.sh/react@^19.2.3/",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "assets/": "./src/assets/"
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
@@ -93,6 +84,5 @@
 <body class="bg-white dark:bg-gray-900 transition-colors custom-scrollbar">
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
-<script type="module" src="/index.tsx"></script>
 </body>
 </html>

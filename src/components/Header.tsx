@@ -43,7 +43,7 @@ const Header: React.FC<HeaderProps> = ({
                                 src={logoUrl} 
                                 className="w-full h-full object-contain" 
                                 alt="The Ground Logo" 
-                                onError={(e) => {
+                                onError={(_e: any) => {
                                     console.error("Logo file could not be found or loaded at " + logoUrl);
                                 }}
                             />

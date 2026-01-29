@@ -338,11 +338,16 @@ function App() {
             )}
 
             {venueToDelete && (
-                <div className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center p-4 backdrop-blur-md">
+                <div 
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="delete-dialog-title"
+                    className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center p-4 backdrop-blur-md"
+                >
                     <div className={`w-full max-w-sm rounded-[32px] p-8 shadow-2xl animate-bounce-in ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
                         <div className="text-center space-y-4">
                             <div className="text-6xl mb-2">⚠️</div>
-                            <h3 className="text-2xl font-black">
+                            <h3 id="delete-dialog-title" className="text-2xl font-black">
                                 {language === 'en' ? 'Delete Court?' : '刪除場地？'}
                             </h3>
                             <p className={`text-sm font-bold px-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>

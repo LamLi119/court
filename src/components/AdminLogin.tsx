@@ -13,9 +13,14 @@ interface AdminLoginProps {
 
 const AdminLogin: React.FC<AdminLoginProps> = ({ password, setPassword, onLogin, onClose, language, t, darkMode }) => {
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4">
+        <div 
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-login-title"
+            className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-4"
+        >
             <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-[16px] p-6 max-w-md w-full shadow-2xl transition-all`}>
-                <h2 className={`text-[24px] font-[900] mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{t('admin')} {t('login')}</h2>
+                <h2 id="admin-login-title" className={`text-[24px] font-[900] mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{t('admin')} {t('login')}</h2>
                 <input
                     type="password"
                     value={password}

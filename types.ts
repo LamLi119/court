@@ -19,6 +19,8 @@ export interface Venue {
   images: string[];
   amenities: string[];
   whatsapp: string;
+  socialLink?: string;
+  sort_order?: number;
   coordinates: {
     lat: number;
     lng: number;

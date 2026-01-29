@@ -1,8 +1,9 @@
-import { Language } from '../../types.ts';
+
+import { Language } from '../types';
 
 export const translations = {
     en: {
-        title: "The Ground Court Finder🔍",
+        title: "HK Pickleball Finder",
         search: "Search venues...",
         filter: "Filter",
         mtrStation: "MTR Station",
@@ -32,11 +33,10 @@ export const translations = {
         allDistances: "All Distances",
         lessThan5: "< 5 min",
         lessThan10: "< 10 min",
-        walk: "walk",
-        findEvents: "Find Events"
+        walk: "walk"
     },
     zh: {
-        title: "The Ground Court Finder🔍",
+        title: "香港匹克球場地搜尋",
         search: "搜尋場地...",
         filter: "篩選",
         mtrStation: "港鐵站",
@@ -66,8 +66,7 @@ export const translations = {
         allDistances: "所有距離",
         lessThan5: "< 5 分鐘",
         lessThan10: "< 10 分鐘",
-        walk: "步行",
-        findEvents: "尋找活動"
+        walk: "步行"
     }
 };
 

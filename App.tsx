@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Venue, Language, AppTab } from './types.ts';
-import { translate } from './utils/translations.ts';
+import { translate } from './src/utils/translations.ts';
 import { db } from './db.ts';
-import Header from './components/Header.tsx';
-import AdminLogin from './components/AdminLogin.tsx';
-import DesktopView from './components/DesktopView.tsx';
-import MobileView from './components/MobileView.tsx';
-import MobileNav from './components/MobileNav.tsx';
-import VenueDetail from './components/VenueDetail.tsx';
-import VenueForm from './components/VenueForm.tsx';
+import Header from './src/components/Header.tsx';
+import AdminLogin from './src/components/AdminLogin.tsx';
+import DesktopView from './src/components/DesktopView.tsx';
+import MobileView from './src/components/MobileView.tsx';
+import MobileNav from './src/components/MobileNav.tsx';
+import VenueDetail from './src/components/VenueDetail.tsx';
+import VenueForm from './src/components/VenueForm.tsx';
 
 function App() {
     const [language, setLanguage] = useState<Language>('en');
@@ -20,17 +20,17 @@ function App() {
     const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
     const [venueToDelete, setVenueToDelete] = useState<Venue | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [mobileViewMode, setMobileViewMode] = useState<'map' | 'list'>('map');
     
     const [venues, setVenues] = useState<Venue[]>([]);
 
     const [savedVenues, setSavedVenues] = useState<number[]>(() => {
-        const saved = localStorage.getItem('pickleball_saved_ids');
-        return saved ? JSON.parse(saved) : [];
-    });
-
-    const [savedDetails, setSavedDetails] = useState<Venue[]>(() => {
-        const details = localStorage.getItem('pickleball_saved_details');
-        return details ? JSON.parse(details) : [];
+        try {
+            const saved = localStorage.getItem('pickleball_saved_ids');
+            return saved ? JSON.parse(saved) : [];
+        } catch {
+            return [];
+        }
     });
 
     const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
@@ -45,16 +45,9 @@ function App() {
             try {
                 setIsLoading(true);
                 const data = await db.getVenues();
-                if (data && data.length > 0) {
-                    setVenues(data);
-                } else {
-                    const local = localStorage.getItem('pickleball_venues');
-                    if (local) setVenues(JSON.parse(local));
-                }
+                setVenues(data || []);
             } catch (err) {
-                console.warn('Could not connect to DB, using local data', err);
-                const local = localStorage.getItem('pickleball_venues');
-                if (local) setVenues(JSON.parse(local));
+                console.error('Error fetching venues from DB:', err);
             } finally {
                 setIsLoading(false);
             }
@@ -70,11 +63,12 @@ function App() {
     }, [venues]);
 
     useEffect(() => {
-        localStorage.setItem('pickleball_saved_ids', JSON.stringify(savedVenues));
-        localStorage.setItem('pickleball_saved_details', JSON.stringify(savedDetails));
-    }, [savedVenues, savedDetails]);
-
-    useEffect(() => localStorage.setItem('pickleball_venues', JSON.stringify(venues)), [venues]);
+        try {
+            localStorage.setItem('pickleball_saved_ids', JSON.stringify(savedVenues));
+        } catch (e) {
+            console.warn('Could not save IDs to localStorage', e);
+        }
+    }, [savedVenues]);
     
     useEffect(() => {
         localStorage.setItem('pickleball_darkmode', darkMode.toString());
@@ -105,7 +99,11 @@ function App() {
     }, [adminPassword]);
 
     const filteredVenues = useMemo(() => {
-        const source = currentTab === 'saved' ? savedDetails : venues;
+        let source = venues;
+        if (currentTab === 'saved') {
+            source = venues.filter(v => savedVenues.includes(v.id));
+        }
+        
         return source.filter(venue => {
             const query = searchQuery.toLowerCase();
             const nameMatch = venue.name.toLowerCase().includes(query) ||
@@ -115,23 +113,18 @@ function App() {
             const distanceMatch = !distanceFilter || venue.walkingDistance <= parseInt(distanceFilter);
             return nameMatch && mtrMatch && distanceMatch;
         });
-    }, [venues, searchQuery, mtrFilter, distanceFilter, currentTab, savedDetails]);
+    }, [venues, searchQuery, mtrFilter, distanceFilter, currentTab, savedVenues]);
 
     const toggleSaveVenue = useCallback((venueId: number) => {
         setSavedVenues(prev => {
             const isSaving = !prev.includes(venueId);
             if (isSaving) {
-                const detail = venues.find(v => v.id === venueId);
-                if (detail) {
-                    setSavedDetails(prevDetails => [...prevDetails, detail]);
-                }
                 return [...prev, venueId];
             } else {
-                setSavedDetails(prevDetails => prevDetails.filter(d => d.id !== venueId));
                 return prev.filter(id => id !== venueId);
             }
         });
-    }, [venues]);
+    }, []);
 
     const confirmDeleteAction = useCallback(async () => {
         if (!venueToDelete) return;
@@ -139,7 +132,6 @@ function App() {
             await db.deleteVenue(venueToDelete.id);
             setVenues(prev => prev.filter(v => v.id !== venueToDelete.id));
             setSavedVenues(prev => prev.filter(id => id !== venueToDelete.id));
-            setSavedDetails(prev => prev.filter(d => d.id !== venueToDelete.id));
         } catch (err) {
             alert('Failed to delete venue.');
         } finally {
@@ -151,11 +143,9 @@ function App() {
     }, [venueToDelete]);
 
     const handleSaveVenue = async (venueData: any) => {
-        // Return promise so VenueForm can handle its own state
         const saved = await db.upsertVenue(venueData);
         if (editingVenue) {
             setVenues(prev => prev.map(old => old.id === saved.id ? saved : old));
-            setSavedDetails(prev => prev.map(old => old.id === saved.id ? saved : old));
         } else {
             setVenues(prev => [...prev, saved]);
         }
@@ -194,6 +184,8 @@ function App() {
                     isAdmin={isAdmin}
                     onEditVenue={(id, v) => { setEditingVenue(v); setShowVenueForm(true); }}
                     availableStations={availableStations}
+                    viewMode={mobileViewMode}
+                    setViewMode={setMobileViewMode}
                 />
             );
         }
@@ -249,7 +241,6 @@ function App() {
                 setLanguage={setLanguage}
                 isAdmin={isAdmin}
                 onAdminClick={() => { if (isAdmin) setCurrentTab('admin'); else setShowAdminLogin(true); }}
-                onLogout={() => { setIsAdmin(false); setCurrentTab('explore'); }}
                 darkMode={darkMode}
                 setDarkMode={setDarkMode}
                 t={t}
@@ -259,6 +250,8 @@ function App() {
                     else setCurrentTab(tab);
                     setSelectedVenue(null);
                 }}
+                viewMode={mobileViewMode}
+                setViewMode={setMobileViewMode}
             />
 
             <main className="h-full">
@@ -266,12 +259,20 @@ function App() {
                     <div className="container mx-auto p-4 md:p-8 pb-32 md:pb-8 space-y-8 animate-in fade-in duration-500">
                         <div className="flex justify-between items-center">
                             <h2 className="text-3xl md:text-4xl font-black tracking-tight">Manage Courts</h2>
-                            <button 
-                                onClick={() => { setEditingVenue(null); setShowVenueForm(true); }} 
-                                className="px-4 py-3 md:px-6 md:py-3 bg-[#007a67] text-white rounded-lg font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
-                            >
-                                + ADD NEW
-                            </button>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => { setEditingVenue(null); setShowVenueForm(true); }} 
+                                    className="px-4 py-3 md:px-6 md:py-3 bg-[#007a67] text-white rounded-lg font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
+                                >
+                                    + ADD NEW
+                                </button>
+                                <button 
+                                    onClick={() => { setIsAdmin(false); setCurrentTab('explore'); }}
+                                    className="px-4 py-3 md:px-6 md:py-3 bg-red-500 text-white rounded-lg font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
+                                >
+                                    LOGOUT
+                                </button>
+                            </div>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {venues.map(v => (
@@ -337,11 +338,16 @@ function App() {
             )}
 
             {venueToDelete && (
-                <div className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center p-4 backdrop-blur-md">
+                <div 
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="delete-dialog-title"
+                    className="fixed inset-0 bg-black/90 z-[999] flex items-center justify-center p-4 backdrop-blur-md"
+                >
                     <div className={`w-full max-w-sm rounded-[32px] p-8 shadow-2xl animate-bounce-in ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
                         <div className="text-center space-y-4">
                             <div className="text-6xl mb-2">⚠️</div>
-                            <h3 className="text-2xl font-black">
+                            <h3 id="delete-dialog-title" className="text-2xl font-black">
                                 {language === 'en' ? 'Delete Court?' : '刪除場地？'}
                             </h3>
                             <p className={`text-sm font-bold px-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -352,13 +358,13 @@ function App() {
                             <div className="flex flex-col gap-3 pt-6">
                                 <button 
                                     onClick={confirmDeleteAction}
-                                    className="w-full py-4 bg-red-500 text-white rounded-2xl font-black"
+                                    className="w-full py-4 bg-red-500 text-white rounded-lg font-black"
                                 >
                                     {language === 'en' ? 'YES, DELETE IT' : '確定刪除'}
                                 </button>
                                 <button 
                                     onClick={() => setVenueToDelete(null)}
-                                    className={`w-full py-4 rounded-2xl font-black ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
+                                    className={`w-full py-4 rounded-lg font-black ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}
                                 >
                                     {language === 'en' ? 'NO, CANCEL' : '取消'}
                                 </button>

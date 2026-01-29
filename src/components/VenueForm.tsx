@@ -78,7 +78,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
     }, []);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
+        const files = Array.from(e.target.files || []) as File[];
         if (files.length === 0) return;
 
         setIsUploading(true);
@@ -88,7 +88,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
                 return new Promise<string>((resolve) => {
                     const reader = new FileReader();
                     reader.onloadend = () => resolve(reader.result as string);
-                    reader.readAsDataURL(file);
+                    reader.readAsDataURL(file as Blob);
                 });
             });
 
@@ -116,7 +116,7 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
             const result = await new Promise<string>((resolve) => {
                 const reader = new FileReader();
                 reader.onloadend = () => resolve(reader.result as string);
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(file as Blob);
             });
 
             setFormData((prev: any) => ({
@@ -155,11 +155,16 @@ const VenueForm: React.FC<VenueFormProps> = ({ venue, onSave, onCancel, onDelete
     const inputClass = `w-full px-4 py-3 border rounded-[12px] focus:ring-2 focus:ring-[#007a67] focus:outline-none transition-all ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`;
 
     return (
-        <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-0 md:p-4">
+        <div 
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="venue-form-title"
+            className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-0 md:p-4"
+        >
             <div className={`w-full max-w-4xl h-full md:h-[90vh] flex flex-col shadow-2xl ${darkMode ? 'bg-gray-800' : 'bg-white'} md:rounded-[16px] animate-in zoom-in duration-300 overflow-hidden`}>
                 <div className="p-6 border-b dark:border-gray-700 flex justify-between items-center bg-inherit">
-                    <h2 className="text-[24px] font-[900]">Court Management</h2>
-                    <button onClick={onCancel} className="text-3xl font-light hover:opacity-50 transition-opacity">×</button>
+                    <h2 id="venue-form-title" className="text-[24px] font-[900]">Court Management</h2>
+                    <button onClick={onCancel} className="text-3xl font-light hover:opacity-50 transition-opacity" aria-label="Close form">×</button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">

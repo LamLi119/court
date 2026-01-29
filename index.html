@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Ground Court Finder</title>
-    <link rel="icon" type="image/svg+xml" href="src/assets/gray-G.png">
+    <link rel="icon" type="image/svg+xml" href="assets/green-G.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,6 @@
             font-family: 'Lexend', sans-serif;
         }
         :root {
-            /* Synced to brand green */
             --sporty-green: #007a67;
         }
         
@@ -54,7 +53,6 @@
             animation: bounceIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
-        /* Loading Spinner */
         .spinner {
             width: 40px;
             height: 40px;
@@ -68,19 +66,16 @@
         }
     </style>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAEwqejoSWN948Sj89y3SQnr5o-bb4o7-g&libraries=places"></script>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@19.0.0",
-    "react-dom": "https://esm.sh/react-dom@19.0.0",
-    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.39.7",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
-    "assets/": "./src/assets/"
-  }
-}
-</script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react/": "https://esm.sh/react@^19.2.4/",
+        "react": "https://esm.sh/react@^19.2.4",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+        "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.93.2"
+      }
+    }
+    </script>
 </head>
 <body class="bg-white dark:bg-gray-900 transition-colors custom-scrollbar">
     <div id="root"></div>

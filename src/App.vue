@@ -278,7 +278,7 @@ const handleDrop = (targetId: number) => {
           >
             <div class="flex items-center gap-4 min-w-0">
               <div class="w-16 h-16 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
-                <img :src="v.images[0] || 'https://via.placeholder.com/150'" class="w-full h-full object-cover" alt="" />
+                <img :src="v.images[0] || '/placeholder.svg'" class="w-full h-full object-cover" alt="" />
               </div>
               <div class="min-w-0">
                 <p class="font-black truncate">{{ v.name }}</p>

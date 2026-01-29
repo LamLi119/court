@@ -33,7 +33,7 @@ const toggleExpand = (e: MouseEvent) => {
       >
         <div class="w-16 h-16 rounded-[16px] overflow-hidden flex-shrink-0">
           <img
-            :src="venue.images[0] || 'https://via.placeholder.com/150'"
+            :src="venue.images[0] || '/placeholder.svg'"
             class="w-full h-full object-cover"
             alt=""
           />

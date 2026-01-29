@@ -27,8 +27,10 @@ export const db = {
     },
 
     async upsertVenue(venue: Partial<Venue>): Promise<Venue> {
+        // Strip frontend-only fields that might not exist in DB schema
+        const { socialLink, sort_order, ...rest } = venue as any;
         // Strict separation of insert/update to handle GENERATED ALWAYS identity columns
-        const { id, ...dataToSave } = venue;
+        const { id, ...dataToSave } = rest;
         
         let query;
         if (id) {

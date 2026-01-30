@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { Venue, Language, AppTab } from '../types';
 import { translate } from './utils/translations';
+import { getStationCanonicalEn } from './utils/mtrStations';
 import { db } from '../db';
 import Header from './components/Header.vue';
 import AdminLogin from './components/AdminLogin.vue';
@@ -28,7 +29,7 @@ const savedVenues = ref<number[]>([]);
 const selectedVenue = ref<Venue | null>(null);
 const showDesktopDetail = ref(false);
 const searchQuery = ref('');
-const mtrFilter = ref('');
+const mtrFilter = ref<string[]>([]);
 const distanceFilter = ref('');
 const darkMode = ref(localStorage.getItem('pickleball_darkmode') === 'true');
 const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
@@ -38,14 +39,9 @@ const loadData = async () => {
     isLoading.value = true;
     const data = await db.getVenues();
     venues.value = data || [];
-
-    // 套用已儲存的 admin 排序（如果有）
-    if (adminOrder.value.length) {
-      applyAdminOrder();
-    } else {
-      adminOrder.value = venues.value.map(v => v.id);
-      saveAdminOrder();
-    }
+    // Home list order follows DB sort_order (same as admin drag order)
+    adminOrder.value = venues.value.map(v => v.id);
+    saveAdminOrder();
   } catch (err) {
     console.error('Error fetching venues from DB:', err);
   } finally {
@@ -79,11 +75,12 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
 });
 
+// All unique MTR stations from DB (trimmed, deduped, sorted)
 const availableStations = computed(() => {
   const stations = venues.value
-    .map(v => v.mtrStation)
-    .filter((station): station is string => !!station);
-  return Array.from(new Set(stations)).sort();
+    .map(v => (v.mtrStation || '').trim())
+    .filter((s): s is string => s.length > 0);
+  return Array.from(new Set(stations)).sort((a, b) => a.localeCompare(b));
 });
 
 watch(savedVenues, (val) => {
@@ -105,6 +102,12 @@ watch(darkMode, (value) => {
 
 const t = (key: string) => translate(language.value, key);
 
+const clearFilters = () => {
+  searchQuery.value = '';
+  mtrFilter.value = [];
+  distanceFilter.value = '';
+};
+
 const handleAdminLogin = () => {
   if (adminPassword.value === 'admin') {
     isAdmin.value = true;
@@ -122,13 +125,24 @@ const filteredVenues = computed(() => {
     source = venues.value.filter(v => savedVenues.value.includes(v.id));
   }
 
+  const mtrCanonicalSet =
+    mtrFilter.value.length > 0
+      ? new Set(mtrFilter.value.map((s) => getStationCanonicalEn(s)).filter(Boolean))
+      : null;
+
   return source.filter(venue => {
-    const query = searchQuery.value.toLowerCase();
-    const nameMatch = venue.name.toLowerCase().includes(query) ||
-      venue.mtrStation.toLowerCase().includes(query) ||
-      venue.address.toLowerCase().includes(query);
-    const mtrMatch = !mtrFilter.value || venue.mtrStation.toLowerCase().includes(mtrFilter.value.toLowerCase());
-    const distanceMatch = !distanceFilter.value || venue.walkingDistance <= parseInt(distanceFilter.value);
+    const query = (searchQuery.value || '').toLowerCase();
+    const name = ((venue as any).name ?? '').toString().toLowerCase();
+    const station = ((venue as any).mtrStation ?? '').toString().toLowerCase();
+    const address = ((venue as any).address ?? '').toString().toLowerCase();
+    const nameMatch = name.includes(query) || station.includes(query) || address.includes(query);
+    const venueStation = (((venue as any).mtrStation ?? '') as string).toString().trim();
+    const venueStationKey = getStationCanonicalEn(venueStation);
+    const mtrMatch = !mtrCanonicalSet || (venueStationKey && mtrCanonicalSet.has(venueStationKey));
+    const wdRaw = (venue as any).walkingDistance;
+    const wd = typeof wdRaw === 'number' ? wdRaw : parseFloat((wdRaw ?? '').toString());
+    const distanceLimit = distanceFilter.value ? parseInt(distanceFilter.value) : NaN;
+    const distanceMatch = !distanceFilter.value || (Number.isFinite(wd) && wd <= distanceLimit);
     return nameMatch && mtrMatch && distanceMatch;
   });
 });
@@ -169,6 +183,29 @@ const handleSaveVenue = async (venueData: any) => {
 
 const draggedVenueId = ref<number | null>(null);
 const adminOrder = ref<number[]>([]);
+const isSortEditing = ref(false);
+const draftAdminOrder = ref<number[]>([]);
+
+const getBaseAdminOrder = (): number[] =>
+  adminOrder.value.length ? [...adminOrder.value] : venues.value.map(v => v.id);
+
+const displayIndexById = computed(() => {
+  const order = isSortEditing.value ? draftAdminOrder.value : getBaseAdminOrder();
+  const map = new Map<number, number>();
+  order.forEach((id, idx) => map.set(id, idx));
+  return map;
+});
+
+const isDraftDirty = computed(() => {
+  if (!isSortEditing.value) return false;
+  const base = getBaseAdminOrder();
+  const draft = draftAdminOrder.value;
+  if (base.length !== draft.length) return true;
+  for (let i = 0; i < base.length; i++) {
+    if (base[i] !== draft[i]) return true;
+  }
+  return false;
+});
 
 const saveAdminOrder = () => {
   try {
@@ -204,23 +241,73 @@ onMounted(() => {
 });
 
 const handleDragStart = (id: number) => {
+  if (!isSortEditing.value) return;
   draggedVenueId.value = id;
 };
 
-const handleDrop = (targetId: number) => {
+const reorderDraft = (newOrder: number[]) => {
+  draftAdminOrder.value = newOrder;
+};
+
+const handleDrop = async (targetId: number) => {
+  if (!isSortEditing.value) return;
   if (draggedVenueId.value === null || draggedVenueId.value === targetId) return;
-  const currentOrder = adminOrder.value.length ? [...adminOrder.value] : venues.value.map(v => v.id);
+  const currentOrder = draftAdminOrder.value.length ? [...draftAdminOrder.value] : getBaseAdminOrder();
   const fromIndex = currentOrder.indexOf(draggedVenueId.value);
   const toIndex = currentOrder.indexOf(targetId);
   if (fromIndex === -1 || toIndex === -1) return;
 
   const [moved] = currentOrder.splice(fromIndex, 1);
   currentOrder.splice(toIndex, 0, moved);
-  adminOrder.value = currentOrder;
+  reorderDraft(currentOrder);
+  draggedVenueId.value = null;
+};
+
+const handleMoveUp = async (id: number) => {
+  if (!isSortEditing.value) return;
+  const currentOrder = draftAdminOrder.value.length ? [...draftAdminOrder.value] : getBaseAdminOrder();
+  const idx = currentOrder.indexOf(id);
+  if (idx <= 0) return;
+  const next = [...currentOrder];
+  [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+  reorderDraft(next);
+};
+
+const handleMoveDown = async (id: number) => {
+  if (!isSortEditing.value) return;
+  const currentOrder = draftAdminOrder.value.length ? [...draftAdminOrder.value] : getBaseAdminOrder();
+  const idx = currentOrder.indexOf(id);
+  if (idx === -1 || idx >= currentOrder.length - 1) return;
+  const next = [...currentOrder];
+  [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+  reorderDraft(next);
+};
+
+const startSortEdit = () => {
+  isSortEditing.value = true;
+  draftAdminOrder.value = getBaseAdminOrder();
+  draggedVenueId.value = null;
+};
+
+const cancelSortEdit = () => {
+  isSortEditing.value = false;
+  draftAdminOrder.value = [];
+  draggedVenueId.value = null;
+};
+
+const saveSortEdit = async () => {
+  if (!isSortEditing.value) return;
+  const next = draftAdminOrder.value.length ? [...draftAdminOrder.value] : getBaseAdminOrder();
+  adminOrder.value = next;
   saveAdminOrder();
   applyAdminOrder();
-
-  draggedVenueId.value = null;
+  try {
+    await db.updateVenueOrder(adminOrder.value);
+  } catch (err) {
+    console.error('Failed to persist order:', err);
+  } finally {
+    cancelSortEdit();
+  }
 };
 </script>
 
@@ -249,16 +336,43 @@ const handleDrop = (targetId: number) => {
         v-if="currentTab === 'admin' && isAdmin && !selectedVenue"
         class="container mx-auto p-4 md:p-8 pb-32 md:pb-8 space-y-8 animate-in fade-in duration-500"
       >
-        <div class="flex justify-between items-center">
+        <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <h2 class="text-3xl md:text-4xl font-black tracking-tight">Manage Courts</h2>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button
+              v-if="!isSortEditing"
+              class="px-4 py-3 md:px-6 md:py-3 bg-gray-500/10 text-gray-700 rounded-lg font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
+              :class="darkMode ? 'text-gray-200 bg-gray-700/40' : ''"
+              @click="startSortEdit"
+            >
+              EDIT SORT
+            </button>
+            <button
+              v-else
+              class="px-4 py-3 md:px-6 md:py-3 rounded-lg font-black shadow-xl active:scale-95 transition-all text-xs md:text-base"
+              :class="isDraftDirty ? 'bg-[#007a67] text-white hover:scale-105' : (darkMode ? 'bg-gray-700 text-gray-400 opacity-60 cursor-not-allowed' : 'bg-gray-200 text-gray-400 opacity-60 cursor-not-allowed')"
+              :disabled="!isDraftDirty"
+              @click="saveSortEdit"
+            >
+              SAVE SORT
+            </button>
+            <button
+              v-if="isSortEditing"
+              class="px-4 py-3 md:px-6 md:py-3 bg-gray-500/10 text-gray-700 rounded-lg font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
+              :class="darkMode ? 'text-gray-200 bg-gray-700/40' : ''"
+              @click="cancelSortEdit"
+            >
+              CANCEL
+            </button>
+            <button
+              v-if="!isSortEditing"
               class="px-4 py-3 md:px-6 md:py-3 bg-[#007a67] text-white rounded-lg font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
               @click="() => { editingVenue = null; showVenueForm = true; }"
             >
               + ADD NEW
             </button>
             <button
+              v-if="!isSortEditing"
               class="px-4 py-3 md:px-6 md:py-3 bg-red-500 text-white rounded-lg font-black shadow-xl hover:scale-105 active:scale-95 transition-all text-xs md:text-base"
               @click="() => { isAdmin = false; currentTab = 'explore'; }"
             >
@@ -268,18 +382,48 @@ const handleDrop = (targetId: number) => {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div
-            v-for="v in venues"
+            v-for="(v, index) in venues"
             :key="v.id"
-            class="p-4 border rounded-3xl shadow-md flex items-center justify-between group transition-all hover:shadow-xl"
+            class="p-4 border rounded-3xl shadow-md flex items-center justify-between group transition-all hover:shadow-xl gap-2"
             :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'"
-            draggable="true"
+            :draggable="isSortEditing"
             @dragstart="handleDragStart(v.id)"
-            @dragover.prevent
+            @dragover.prevent="isSortEditing"
             @drop="handleDrop(v.id)"
           >
-            <div class="flex items-center gap-4 min-w-0">
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <div class="flex flex-col items-center gap-0.5">
+                <button
+                  type="button"
+                  class="p-2 rounded-lg transition-colors touch-manipulation"
+                  :class="!isSortEditing ? 'opacity-30 cursor-not-allowed' : (displayIndexById.get(v.id) === 0 ? 'opacity-30 cursor-not-allowed' : (darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-200 text-gray-600'))"
+                  :disabled="!isSortEditing || displayIndexById.get(v.id) === 0"
+                  :aria-label="language === 'en' ? 'Move up' : '上移'"
+                  @click.stop="handleMoveUp(v.id)"
+                >
+                  ▲
+                </button>
+                <span
+                  class="text-sm font-black tabular-nums min-w-[1.25rem] text-center"
+                  :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
+                >
+                  {{ (displayIndexById.get(v.id) ?? index) + 1 }}
+                </span>
+                <button
+                  type="button"
+                  class="p-2 rounded-lg transition-colors touch-manipulation"
+                  :class="!isSortEditing ? 'opacity-30 cursor-not-allowed' : ((displayIndexById.get(v.id) ?? index) === venues.length - 1 ? 'opacity-30 cursor-not-allowed' : (darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-200 text-gray-600'))"
+                  :disabled="!isSortEditing || (displayIndexById.get(v.id) ?? index) === venues.length - 1"
+                  :aria-label="language === 'en' ? 'Move down' : '下移'"
+                  @click.stop="handleMoveDown(v.id)"
+                >
+                  ▼
+                </button>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 min-w-0 flex-1">
               <div class="w-16 h-16 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
-                <img :src="v.images[0] || '/placeholder.svg'" class="w-full h-full object-cover" alt="" />
+                <img :src="v.org_icon || v.images[0] || '/placeholder.svg'" class="w-full h-full object-cover" alt="" />
               </div>
               <div class="min-w-0">
                 <p class="font-black truncate">{{ v.name }}</p>
@@ -288,7 +432,7 @@ const handleDrop = (targetId: number) => {
                 </p>
               </div>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 flex-shrink-0">
               <button
                 class="p-3 bg-blue-500/10 text-blue-500 rounded-xl"
                 @click="() => { editingVenue = v; showVenueForm = true; }"
@@ -327,7 +471,7 @@ const handleDrop = (targetId: number) => {
           :searchQuery="searchQuery"
           :setSearchQuery="(s: string) => { searchQuery = s; }"
           :mtrFilter="mtrFilter"
-          :setMtrFilter="(s: string) => { mtrFilter = s; }"
+          :setMtrFilter="(arr: string[]) => { mtrFilter = arr; }"
           :distanceFilter="distanceFilter"
           :setDistanceFilter="(s: string) => { distanceFilter = s; }"
           :language="language"
@@ -338,6 +482,7 @@ const handleDrop = (targetId: number) => {
           :isAdmin="isAdmin"
           :onEditVenue="(id: number, v: any) => { editingVenue = v; showVenueForm = true; }"
           :availableStations="availableStations"
+          :onClearFilters="clearFilters"
         />
 
         <VenueDetail
@@ -362,7 +507,7 @@ const handleDrop = (targetId: number) => {
           :searchQuery="searchQuery"
           :setSearchQuery="(s: string) => { searchQuery = s; }"
           :mtrFilter="mtrFilter"
-          :setMtrFilter="(s: string) => { mtrFilter = s; }"
+          :setMtrFilter="(arr: string[]) => { mtrFilter = arr; }"
           :distanceFilter="distanceFilter"
           :setDistanceFilter="(s: string) => { distanceFilter = s; }"
           :language="language"
@@ -378,6 +523,7 @@ const handleDrop = (targetId: number) => {
             if (target) venueToDelete = target;
           }"
           :availableStations="availableStations"
+          :onClearFilters="clearFilters"
         />
       </div>
     </main>

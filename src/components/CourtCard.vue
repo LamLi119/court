@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { Venue, Language } from '../../types';
+import { getStationDisplayName } from '../utils/mtrStations';
 
 const props = defineProps<{
   venue: Venue;
@@ -34,9 +35,9 @@ const toggleExpand = (e: MouseEvent) => {
       >
         <div class="w-16 h-16 rounded-[16px] overflow-hidden flex-shrink-0">
           <img
-            :src="venue.images[0] || '/placeholder.svg'"
+            :src="venue.org_icon || venue.images[0] || '/placeholder.svg'"
             class="w-full h-full object-cover"
-            alt=""
+            :alt="venue.name"
           />
         </div>
         <div class="flex-1 min-w-0">
@@ -50,7 +51,7 @@ const toggleExpand = (e: MouseEvent) => {
             class="text-[14px] font-[400] opacity-70"
             :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
           >
-            🚇 {{ venue.mtrStation }}
+            🚇 {{ getStationDisplayName(venue.mtrStation, language) }}
           </p>
         </div>
         <button
@@ -104,7 +105,7 @@ const toggleExpand = (e: MouseEvent) => {
   >
       <div class="relative h-44 overflow-hidden">
       <img
-        :src="venue.images[0]"
+        :src="venue.org_icon || venue.images[0] || '/placeholder.svg'"
         :alt="venue.name"
         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
       />
@@ -130,7 +131,7 @@ const toggleExpand = (e: MouseEvent) => {
         class="flex items-center gap-3 text-[14px] font-[400] mb-4"
         :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
       >
-        <span>🚇 {{ venue.mtrStation }}</span>
+        <span>🚇 {{ getStationDisplayName(venue.mtrStation, language) }}</span>
         <span>🚶 {{ venue.walkingDistance }} {{ t('min') }}</span>
       </div>
       <div class="flex items-center justify-between">

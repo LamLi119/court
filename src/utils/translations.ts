@@ -5,6 +5,7 @@ export const translations = {
     en: {
         title: "HK Pickleball Finder",
         search: "Search venues...",
+        multiVenueMapView: "Multi-Venue Map View",
         filter: "Filter",
         mtrStation: "MTR Station",
         walkingDistance: "Walking Distance",
@@ -30,14 +31,18 @@ export const translations = {
         contact: "Contact via WhatsApp",
         noVenues: "No venues found",
         allStations: "All Stations",
+        clearFilters: "Clear filters",
         allDistances: "All Distances",
         lessThan5: "< 5 min",
         lessThan10: "< 10 min",
+        mtrUnder5Min: "MTR < 5 min",
+        mtrUnder10Min: "MTR < 10 min",
         walk: "walk"
     },
     zh: {
         title: "香港匹克球場地搜尋",
         search: "搜尋場地...",
+        multiVenueMapView: "多場地地圖",
         filter: "篩選",
         mtrStation: "港鐵站",
         walkingDistance: "步行距離",
@@ -63,9 +68,12 @@ export const translations = {
         contact: "透過 WhatsApp 聯絡",
         noVenues: "找不到場地",
         allStations: "所有車站",
+        clearFilters: "清除篩選",
         allDistances: "所有距離",
         lessThan5: "< 5 分鐘",
         lessThan10: "< 10 分鐘",
+        mtrUnder5Min: "港鐵 < 5 分鐘",
+        mtrUnder10Min: "港鐵 < 10 分鐘",
         walk: "步行"
     }
 };

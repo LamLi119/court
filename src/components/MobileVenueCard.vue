@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Venue, Language } from '../../types';
+import { getStationDisplayName } from '../utils/mtrStations';
 
 const props = defineProps<{
   venue: Venue;
@@ -24,7 +25,7 @@ const props = defineProps<{
     >
       <div class="w-20 h-20 rounded-[16px] overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
         <img
-          :src="venue.images[0] || '/placeholder.svg'"
+          :src="venue.org_icon || venue.images[0] || '/placeholder.svg'"
           :alt="venue.name"
           class="w-full h-full object-cover"
         />
@@ -41,7 +42,7 @@ const props = defineProps<{
           class="text-[13px] font-[400] truncate"
           :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
         >
-          🚇 {{ venue.mtrStation }}
+          🚇 {{ getStationDisplayName(venue.mtrStation, language) }}
         </p>
         <div class="flex items-center gap-2 mt-1 text-[12px]">
           <span :class="darkMode ? 'text-gray-400' : 'text-gray-500'">

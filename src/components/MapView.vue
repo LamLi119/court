@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { onMounted, onBeforeUnmount, ref, watch, computed } from 'vue';
 import type { Venue, Language } from '../../types';
 import courtIconUrl from '../assets/green-G.svg';
 
@@ -11,6 +11,7 @@ const props = defineProps<{
   onSelectVenue: (v: Venue) => void;
   language: Language;
   darkMode: boolean;
+  isMobile?: boolean;
 }>();
 
 const mapRef = ref<HTMLDivElement | null>(null);
@@ -49,13 +50,13 @@ onMounted(() => {
 
   try {
     googleMap.value = new google.maps.Map(mapRef.value, {
-      center: { lat: 22.3499, lng: 114.1194 },
-      zoom: props.darkMode ? 11 : 10.75,
-      disableDefaultUI: false,
-      zoomControl: true,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
+      center: props.isMobile ? { lat: 22.2499, lng: 114.1194 } : { lat: 22.3499, lng: 114.1194 },
+      zoom: props.isMobile ? 10 : 11,
+      disableDefaultUI: props.isMobile ? true : false,
+      zoomControl: props.isMobile ? true : false,
+      mapTypeControl: props.isMobile ? true : false,
+      streetViewControl: props.isMobile ? true : false,
+      fullscreenControl: props.isMobile ? true : false,
       styles: props.darkMode ? DARK_MODE_STYLE : MAP_STYLES
     });
   } catch (err) {
@@ -72,27 +73,7 @@ const retryLoading = () => {
   window.location.reload();
 };
 
-const normalizeLatLng = (coords: any): { lat: number; lng: number } | null => {
-  if (!coords) return null;
-  const lat = typeof coords.lat === 'string' ? parseFloat(coords.lat) : coords.lat;
-  const lng = typeof coords.lng === 'string' ? parseFloat(coords.lng) : coords.lng;
-  if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) return null;
-  return { lat, lng };
-};
-
-const syncMarkers = () => {
-  if (!googleMap.value || typeof google === 'undefined') return;
-
-  // remove markers for deleted venues
-  Object.keys(markers.value).forEach((id) => {
-    const venueId = parseInt(id);
-    if (!props.venues.find((v) => v.id === venueId)) {
-      markers.value[venueId].setMap(null);
-      delete markers.value[venueId];
-    }
-  });
-
-  const racquetPaths = `
+const racquetPaths = `
 <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
 	fill="none" width="100%" viewBox="0 0 500 500" xml:space="preserve">
 <path opacity="1.000000" stroke="none" 
@@ -204,28 +185,71 @@ z"/>
 </svg>
 `;
 
-        const compositeSvg = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" 
-                      fill= "#007a67" 
-                      stroke="#ffffff" 
-                      stroke-width="1" />
-                <g transform="translate(6, 4) scale(0.5)" fill="#ffffff" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
-                    ${racquetPaths}
-                </g>
-            </svg>`)}`;
+const markerIconUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+          fill="#007a67"
+          stroke="#ffffff"
+          stroke-width="1" />
+    <g transform="translate(6, 4) scale(0.5)" fill="#ffffff" stroke="#ffffff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+      ${racquetPaths}
+    </g>
+  </svg>
+`)}`;
+
+const normalizeLatLng = (coords: any): { lat: number; lng: number } | null => {
+  if (!coords) return null;
+  const lat = typeof coords.lat === 'string' ? parseFloat(coords.lat) : coords.lat;
+  const lng = typeof coords.lng === 'string' ? parseFloat(coords.lng) : coords.lng;
+  if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) return null;
+  return { lat, lng };
+};
+
+const clearAllMarkers = () => {
+  Object.values(markers.value).forEach((m) => {
+    try {
+      // Hide immediately (repaint-friendly), then detach from map.
+      if (typeof m?.setVisible === 'function') m.setVisible(false);
+      m.setMap(null);
+    } catch {
+      // ignore
+    }
+  });
+  markers.value = {};
+};
+
+// Allow parent components to force clear/re-sync pins (e.g. on "Go search")
+defineExpose({
+  clearPins: async () => {
+    clearAllMarkers();
+    // Wait for browser paint so user sees pins disappear immediately.
+    await new Promise<void>((resolve) => {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      } else {
+        resolve();
+      }
+    });
+  },
+  syncPins: () => syncMarkers()
+});
+
+const syncMarkers = () => {
+  if (!googleMap.value || typeof google === 'undefined') return;
+  // Force-rebuild markers every time venues change.
+  // This guarantees no stale pins remain after filtering (especially on mobile).
+  clearAllMarkers();
 
   props.venues.forEach((venue) => {
-    if (markers.value[venue.id]) return;
     const coords = normalizeLatLng((venue as any).coordinates);
     if (!coords) return;
 
     const marker = new google.maps.Marker({
-      position: venue.coordinates,
+      position: coords,
       map: googleMap.value,
       title: venue.name,
       icon: {
-        url: compositeSvg,
+        url: markerIconUrl,
         scaledSize: new google.maps.Size(48, 48),
         anchor: new google.maps.Point(24, 48)
       },
@@ -248,10 +272,30 @@ watch(
   }
 );
 
+// Create a computed that generates a unique key for the venues array
+const venuesKey = computed(() => {
+  if (!props.venues || props.venues.length === 0) return 'empty';
+  return props.venues.map(v => v.id).sort((a, b) => a - b).join(',');
+});
+
 watch(
-  () => [props.venues, googleMap.value],
-  () => syncMarkers(),
-  { deep: true, immediate: true }
+  venuesKey,
+  () => {
+    if (googleMap.value) {
+      // Always sync markers when venues change (by ID list)
+      syncMarkers();
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => googleMap.value,
+  () => {
+    if (googleMap.value && props.venues) {
+      syncMarkers();
+    }
+  }
 );
 
 watch(

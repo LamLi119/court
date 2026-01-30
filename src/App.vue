@@ -28,7 +28,7 @@ const savedVenues = ref<number[]>([]);
 const selectedVenue = ref<Venue | null>(null);
 const showDesktopDetail = ref(false);
 const searchQuery = ref('');
-const mtrFilter = ref('');
+const mtrFilter = ref<string[]>([]);
 const distanceFilter = ref('');
 const darkMode = ref(localStorage.getItem('pickleball_darkmode') === 'true');
 const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
@@ -38,14 +38,9 @@ const loadData = async () => {
     isLoading.value = true;
     const data = await db.getVenues();
     venues.value = data || [];
-
-    // 套用已儲存的 admin 排序（如果有）
-    if (adminOrder.value.length) {
-      applyAdminOrder();
-    } else {
-      adminOrder.value = venues.value.map(v => v.id);
-      saveAdminOrder();
-    }
+    // Home list order follows DB sort_order (same as admin drag order)
+    adminOrder.value = venues.value.map(v => v.id);
+    saveAdminOrder();
   } catch (err) {
     console.error('Error fetching venues from DB:', err);
   } finally {
@@ -79,11 +74,12 @@ onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
 });
 
+// All unique MTR stations from DB (trimmed, deduped, sorted)
 const availableStations = computed(() => {
   const stations = venues.value
-    .map(v => v.mtrStation)
-    .filter((station): station is string => !!station);
-  return Array.from(new Set(stations)).sort();
+    .map(v => (v.mtrStation || '').trim())
+    .filter((s): s is string => s.length > 0);
+  return Array.from(new Set(stations)).sort((a, b) => a.localeCompare(b));
 });
 
 watch(savedVenues, (val) => {
@@ -127,7 +123,8 @@ const filteredVenues = computed(() => {
     const nameMatch = venue.name.toLowerCase().includes(query) ||
       venue.mtrStation.toLowerCase().includes(query) ||
       venue.address.toLowerCase().includes(query);
-    const mtrMatch = !mtrFilter.value || venue.mtrStation.toLowerCase().includes(mtrFilter.value.toLowerCase());
+    const venueStation = (venue.mtrStation || '').trim();
+    const mtrMatch = !mtrFilter.value.length || mtrFilter.value.includes(venueStation);
     const distanceMatch = !distanceFilter.value || venue.walkingDistance <= parseInt(distanceFilter.value);
     return nameMatch && mtrMatch && distanceMatch;
   });
@@ -207,7 +204,18 @@ const handleDragStart = (id: number) => {
   draggedVenueId.value = id;
 };
 
-const handleDrop = (targetId: number) => {
+const reorderAndPersist = async (newOrder: number[]) => {
+  adminOrder.value = newOrder;
+  saveAdminOrder();
+  applyAdminOrder();
+  try {
+    await db.updateVenueOrder(adminOrder.value);
+  } catch (err) {
+    console.error('Failed to persist order:', err);
+  }
+};
+
+const handleDrop = async (targetId: number) => {
   if (draggedVenueId.value === null || draggedVenueId.value === targetId) return;
   const currentOrder = adminOrder.value.length ? [...adminOrder.value] : venues.value.map(v => v.id);
   const fromIndex = currentOrder.indexOf(draggedVenueId.value);
@@ -216,11 +224,26 @@ const handleDrop = (targetId: number) => {
 
   const [moved] = currentOrder.splice(fromIndex, 1);
   currentOrder.splice(toIndex, 0, moved);
-  adminOrder.value = currentOrder;
-  saveAdminOrder();
-  applyAdminOrder();
-
+  await reorderAndPersist(currentOrder);
   draggedVenueId.value = null;
+};
+
+const handleMoveUp = async (id: number) => {
+  const currentOrder = adminOrder.value.length ? [...adminOrder.value] : venues.value.map(v => v.id);
+  const idx = currentOrder.indexOf(id);
+  if (idx <= 0) return;
+  const next = [...currentOrder];
+  [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+  await reorderAndPersist(next);
+};
+
+const handleMoveDown = async (id: number) => {
+  const currentOrder = adminOrder.value.length ? [...adminOrder.value] : venues.value.map(v => v.id);
+  const idx = currentOrder.indexOf(id);
+  if (idx === -1 || idx >= currentOrder.length - 1) return;
+  const next = [...currentOrder];
+  [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+  await reorderAndPersist(next);
 };
 </script>
 
@@ -268,18 +291,48 @@ const handleDrop = (targetId: number) => {
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div
-            v-for="v in venues"
+            v-for="(v, index) in venues"
             :key="v.id"
-            class="p-4 border rounded-3xl shadow-md flex items-center justify-between group transition-all hover:shadow-xl"
+            class="p-4 border rounded-3xl shadow-md flex items-center justify-between group transition-all hover:shadow-xl gap-2"
             :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'"
             draggable="true"
             @dragstart="handleDragStart(v.id)"
             @dragover.prevent
             @drop="handleDrop(v.id)"
           >
-            <div class="flex items-center gap-4 min-w-0">
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <div class="flex flex-col items-center gap-0.5">
+                <button
+                  type="button"
+                  class="p-2 rounded-lg transition-colors touch-manipulation"
+                  :class="index === 0 ? 'opacity-30 cursor-not-allowed' : (darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-200 text-gray-600')"
+                  :disabled="index === 0"
+                  :aria-label="language === 'en' ? 'Move up' : '上移'"
+                  @click.stop="handleMoveUp(v.id)"
+                >
+                  ▲
+                </button>
+                <span
+                  class="text-sm font-black tabular-nums min-w-[1.25rem] text-center"
+                  :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
+                >
+                  {{ index + 1 }}
+                </span>
+                <button
+                  type="button"
+                  class="p-2 rounded-lg transition-colors touch-manipulation"
+                  :class="index === venues.length - 1 ? 'opacity-30 cursor-not-allowed' : (darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-200 text-gray-600')"
+                  :disabled="index === venues.length - 1"
+                  :aria-label="language === 'en' ? 'Move down' : '下移'"
+                  @click.stop="handleMoveDown(v.id)"
+                >
+                  ▼
+                </button>
+              </div>
+            </div>
+            <div class="flex items-center gap-4 min-w-0 flex-1">
               <div class="w-16 h-16 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
-                <img :src="v.images[0] || '/placeholder.svg'" class="w-full h-full object-cover" alt="" />
+                <img :src="v.org_icon || v.images[0] || '/placeholder.svg'" class="w-full h-full object-cover" alt="" />
               </div>
               <div class="min-w-0">
                 <p class="font-black truncate">{{ v.name }}</p>
@@ -288,7 +341,7 @@ const handleDrop = (targetId: number) => {
                 </p>
               </div>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 flex-shrink-0">
               <button
                 class="p-3 bg-blue-500/10 text-blue-500 rounded-xl"
                 @click="() => { editingVenue = v; showVenueForm = true; }"
@@ -327,7 +380,7 @@ const handleDrop = (targetId: number) => {
           :searchQuery="searchQuery"
           :setSearchQuery="(s: string) => { searchQuery = s; }"
           :mtrFilter="mtrFilter"
-          :setMtrFilter="(s: string) => { mtrFilter = s; }"
+          :setMtrFilter="(arr: string[]) => { mtrFilter = arr; }"
           :distanceFilter="distanceFilter"
           :setDistanceFilter="(s: string) => { distanceFilter = s; }"
           :language="language"
@@ -362,7 +415,7 @@ const handleDrop = (targetId: number) => {
           :searchQuery="searchQuery"
           :setSearchQuery="(s: string) => { searchQuery = s; }"
           :mtrFilter="mtrFilter"
-          :setMtrFilter="(s: string) => { mtrFilter = s; }"
+          :setMtrFilter="(arr: string[]) => { mtrFilter = arr; }"
           :distanceFilter="distanceFilter"
           :setDistanceFilter="(s: string) => { distanceFilter = s; }"
           :language="language"

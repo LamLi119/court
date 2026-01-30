@@ -14,23 +14,63 @@ const props = defineProps<{
   darkMode: boolean;
 }>();
 
+function parseSocialLinks(s: string | undefined): Record<string, string> {
+  const empty = { instagram: '', facebook: '', x: '', threads: '', youtube: '', website: '' };
+  if (!s?.trim()) return empty;
+  try {
+    const p = JSON.parse(s);
+    if (p && typeof p === 'object') {
+      const strip = (url: unknown, pattern: RegExp) =>
+        url && typeof url === 'string' ? url.replace(pattern, '').replace(/\/$/, '') : '';
+      return {
+        instagram: strip(p.instagram, /^https?:\/\/(www\.)?instagram\.com\/?/i),
+        facebook: strip(p.facebook, /^https?:\/\/(www\.)?(fb\.com|facebook\.com)\/?/i),
+        x: strip(p.x, /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/?/i),
+        threads: strip(p.threads, /^https?:\/\/(www\.)?threads\.net\/@?/i),
+        youtube: strip(p.youtube, /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\/@?/i),
+        website: (p.website && typeof p.website === 'string') ? p.website : ''
+      };
+    }
+  } catch (_) {}
+  return { ...empty, website: s || '' };
+}
+
+function buildSocialLinkJson(links: Record<string, string>): string {
+  const url = (v: string, base: string, prefix = '') =>
+    (v && v.trim()) ? (v.trim().startsWith('http') ? v.trim() : `${base}${prefix}${v.trim().replace(/^@?\/?/, '')}`) : '';
+  return JSON.stringify({
+    instagram: url(links.instagram, 'https://instagram.com/'),
+    facebook: url(links.facebook, 'https://facebook.com/'),
+    x: url(links.x, 'https://x.com/'),
+    threads: url(links.threads, 'https://threads.net/@', '@'),
+    youtube: url(links.youtube, 'https://youtube.com/@', '@'),
+    website: (links.website && links.website.trim()) ? links.website.trim() : ''
+  });
+}
+
+const defaultForm = {
+  name: '',
+  description: '',
+  mtrStation: '',
+  mtrExit: '',
+  walkingDistance: 0,
+  address: '',
+  ceilingHeight: 0,
+  startingPrice: 0,
+  pricing: { type: 'text' as const, content: '', imageUrl: '' },
+  images: [] as string[],
+  amenities: [] as string[],
+  whatsapp: '',
+  socialLink: '',
+  org_icon: '',
+  coordinates: { lat: 22.3193, lng: 114.1694 },
+  socialLinks: { instagram: '', facebook: '', x: '', threads: '', youtube: '', website: '' }
+};
+
 const formData = reactive<any>(
-  props.venue || {
-    name: '',
-    description: '',
-    mtrStation: '',
-    mtrExit: '',
-    walkingDistance: 0,
-    address: '',
-    ceilingHeight: 0,
-    startingPrice: 0,
-    pricing: { type: 'text', content: '', imageUrl: '' },
-    images: [],
-    amenities: [],
-    whatsapp: '',
-    socialLink: '',
-    coordinates: { lat: 22.3193, lng: 114.1694 }
-  }
+  props.venue
+    ? { ...props.venue, socialLinks: parseSocialLinks(props.venue.socialLink) }
+    : { ...defaultForm }
 );
 
 const placesApiError = ref(false);
@@ -40,6 +80,7 @@ const saveError = ref<string | null>(null);
 
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const pricingImageRef = ref<HTMLInputElement | null>(null);
+const orgIconInputRef = ref<HTMLInputElement | null>(null);
 const addressInputRef = ref<HTMLInputElement | null>(null);
 const autocompleteRef = ref<any>(null);
 
@@ -134,12 +175,41 @@ const handlePricingImageUpload = async (e: Event) => {
   }
 };
 
+const handleOrgIconUpload = async (e: Event) => {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file || !file.type.startsWith('image/')) return;
+
+  isUploading.value = true;
+  saveError.value = null;
+
+  try {
+    const result = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(file as Blob);
+    });
+    formData.org_icon = result;
+  } catch (err) {
+    console.error('Org icon upload failed', err);
+    saveError.value = 'Failed to upload org icon.';
+  } finally {
+    isUploading.value = false;
+    if (orgIconInputRef.value) orgIconInputRef.value.value = '';
+  }
+};
+
+const clearOrgIcon = () => {
+  formData.org_icon = '';
+};
+
 const handleSubmit = async (e?: Event) => {
   if (e) e.preventDefault();
   if (isUploading.value || isSaving.value) return;
   isSaving.value = true;
   saveError.value = null;
   try {
+    formData.socialLink = buildSocialLinkJson(formData.socialLinks);
     await props.onSave(formData);
   } catch (err: any) {
     saveError.value = err?.message || 'An unexpected error occurred while saving.';
@@ -157,7 +227,7 @@ const labelClass =
   'block mb-1 text-[12px] font-[900] uppercase tracking-wider ' +
   (props.darkMode ? 'text-gray-400' : 'text-gray-500');
 const inputClass =
-  'w-full px-4 py-3 border rounded-[12px] focus:ring-2 focus:ring-[#007a67] focus:outline-none transition-all ' +
+  'w-full px-4 py-3 border rounded-[12px] focus:outline-none transition ' +
   (props.darkMode
     ? 'bg-gray-700 border-gray-600 text-white'
     : 'bg-white border-gray-200 text-gray-900');
@@ -215,10 +285,67 @@ const inputClass =
           </button>
         </div>
 
+        <div class="flex flex-col sm:flex-row gap-6 items-start">
+          <div class="flex-shrink-0">
+            <label :class="labelClass" class="block mb-2">Org Icon (one only)</label>
+            <div class="flex flex-wrap items-center gap-3">
+              <div
+                v-if="formData.org_icon"
+                class="relative w-32 h-32 rounded-[12px] overflow-hidden border dark:border-gray-600 flex-shrink-0"
+              >
+                <img
+                  :src="formData.org_icon"
+                  class="w-full h-full object-cover"
+                  alt="Org icon"
+                />
+                <button
+                  type="button"
+                  class="absolute top-0.5 right-0.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                  @click="clearOrgIcon"
+                >
+                  ×
+                </button>
+              </div>
+              <label
+                class="cursor-pointer flex items-center justify-center gap-2 px-4 py-3 rounded-[12px] border-2 border-dashed transition-colors"
+                :class="isUploading ? 'border-[#007a67]/30 bg-[#007a67]/5' : 'border-[#007a67]/50 hover:border-[#007a67] hover:bg-[#007a67]/5'"
+              >
+                <input
+                  ref="orgIconInputRef"
+                  type="file"
+                  accept="image/*"
+                  class="hidden"
+                  @change="handleOrgIconUpload"
+                />
+                <span v-if="isUploading" class="text-sm font-bold text-[#007a67]">Uploading…</span>
+                <span v-else class="text-sm font-bold text-[#007a67]">{{ formData.org_icon ? 'Change' : 'Upload' }} icon</span>
+              </label>
+            </div>
+          </div>
+          <div class="flex-1 min-w-0 flex flex-col gap-4 w-full">
+            <div>
+              <label :class="labelClass">Court Name *</label>
+              <input
+                v-model="formData.name"
+                type="text"
+                :class="inputClass"
+                required
+              />
+            </div>
+            <div>
+              <label :class="labelClass">Starting Price *</label>
+              <input
+                v-model.number="formData.startingPrice"
+                type="number"
+                :class="inputClass"
+                required
+              />
+            </div>
+          </div>
+        </div>
+
         <div class="relative">
-          <label
-            :class="labelClass"
-          >
+          <label :class="labelClass">
             {{ language === 'en' ? 'Full Address *' : '詳細地址 *' }}
           </label>
           <input
@@ -230,53 +357,41 @@ const inputClass =
             placeholder="Start typing building or street name..."
           />
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label :class="labelClass">WhatsApp Number *</label>
+          <input
+            v-model="formData.whatsapp"
+            type="text"
+            :class="inputClass"
+            required
+          />
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label :class="labelClass">Court Name *</label>
+            <label :class="labelClass">MTR Station</label>
             <input
-              v-model="formData.name"
+              v-model="formData.mtrStation"
               type="text"
               :class="inputClass"
-              required
             />
           </div>
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label :class="labelClass">MTR Station</label>
-              <input
-                v-model="formData.mtrStation"
-                type="text"
-                :class="inputClass"
-              />
-            </div>
-            <div>
-              <label :class="labelClass">MTR Exit</label>
-              <input
-                v-model="formData.mtrExit"
-                type="text"
-                :class="inputClass"
-              />
-            </div>
+          <div>
+            <label :class="labelClass">MTR Exit</label>
+            <input
+              v-model="formData.mtrExit"
+              type="text"
+              :class="inputClass"
+            />
           </div>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-2 gap-4">
           <div>
             <label :class="labelClass">Walking (min)</label>
             <input
               v-model.number="formData.walkingDistance"
               type="number"
               :class="inputClass"
-            />
-          </div>
-          <div>
-            <label :class="labelClass">Starting Price *</label>
-            <input
-              v-model.number="formData.startingPrice"
-              type="number"
-              :class="inputClass"
-              required
             />
           </div>
           <div>
@@ -301,23 +416,62 @@ const inputClass =
         </div>
 
         <div>
-          <label :class="labelClass">WhatsApp Number *</label>
-          <input
-            v-model="formData.whatsapp"
-            type="text"
-            :class="inputClass"
-            required
-          />
-        </div>
-
-        <div>
-          <label :class="labelClass">Social Media Link</label>
-          <input
-            v-model="formData.socialLink"
-            type="url"
-            :class="inputClass"
-            placeholder="https://instagram.com/..."
-          />
+          <label :class="labelClass" class="block mb-3">Social Links</label>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden" :class="darkMode ? 'bg-gray-700' : 'bg-gray-100'" aria-hidden="true">
+                <img src="https://static.cdninstagram.com/rsrc.php/v4/yG/r/De-Dwpd5CHc.png" alt="" class="w-9 h-9 object-contain" />
+              </span>
+              <div class="flex-1 min-w-0 flex items-center rounded-[12px] border overflow-hidden" :class="darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'">
+                <span class="pl-3 text-[12px] font-[700] shrink-0" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">instagram.com/</span>
+                <input v-model="formData.socialLinks.instagram" type="text" :class="inputClass + ' border-0 rounded-none bg-transparent'" placeholder="username" />
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden" :class="darkMode ? 'bg-gray-700' : 'bg-gray-100'" aria-hidden="true">
+                <img src="https://static.xx.fbcdn.net/rsrc.php/yx/r/e9sqr8WnkCf.ico" alt="" class="w-9 h-9 object-contain" />
+              </span>
+              <div class="flex-1 min-w-0 flex items-center rounded-[12px] border overflow-hidden" :class="darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'">
+                <span class="pl-3 text-[12px] font-[700] shrink-0" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">facebook.com/</span>
+                <input v-model="formData.socialLinks.facebook" type="text" :class="inputClass + ' border-0 rounded-none bg-transparent'" placeholder="username" />
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden" :class="darkMode ? 'bg-gray-700' : 'bg-gray-100'" aria-hidden="true">
+                <img src="https://abs.twimg.com/responsive-web/client-web/icon-ios.77d25eba.png" alt="" class="w-9 h-9 object-contain" />
+              </span>
+              <div class="flex-1 min-w-0 flex items-center rounded-[12px] border overflow-hidden" :class="darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'">
+                <span class="pl-3 text-[12px] font-[700] shrink-0" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">x.com/</span>
+                <input v-model="formData.socialLinks.x" type="text" :class="inputClass + ' border-0 rounded-none bg-transparent'" placeholder="username" />
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden" :class="darkMode ? 'bg-gray-700' : 'bg-gray-100'" aria-hidden="true">
+                <img src="https://static.cdninstagram.com/rsrc.php/v4/yV/r/giQBh6jDlMa.png" alt="" class="w-9 h-9 object-contain" />
+              </span>
+              <div class="flex-1 min-w-0 flex items-center rounded-[12px] border overflow-hidden" :class="darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'">
+                <span class="pl-3 text-[12px] font-[700] shrink-0" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">threads.net/@</span>
+                <input v-model="formData.socialLinks.threads" type="text" :class="inputClass + ' border-0 rounded-none bg-transparent'" placeholder="username" />
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden" :class="darkMode ? 'bg-gray-700' : 'bg-gray-100'" aria-hidden="true">
+                <img src="https://m.youtube.com/static/apple-touch-icon-144x144-precomposed.png" alt="" class="w-9 h-9 object-contain" />
+              </span>
+              <div class="flex-1 min-w-0 flex items-center rounded-[12px] border overflow-hidden" :class="darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'">
+                <span class="pl-3 text-[12px] font-[700] shrink-0" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">youtube.com/@</span>
+                <input v-model="formData.socialLinks.youtube" type="text" :class="inputClass + ' border-0 rounded-none bg-transparent'" placeholder="username" />
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              <span class="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center overflow-hidden" :class="darkMode ? 'bg-gray-700' : 'bg-gray-100'" aria-hidden="true">
+                <img src="https://svgsilh.com/svg/1873373.svg" alt="" class="w-9 h-9 object-contain" :class="darkMode ? 'opacity-90' : ''" />
+              </span>
+              <div class="flex-1 min-w-0">
+                <input v-model="formData.socialLinks.website" type="url" :class="inputClass" placeholder="Your website" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="space-y-4">
@@ -370,11 +524,13 @@ const inputClass =
 
         <div class="space-y-4">
           <label :class="labelClass">Pricing Info</label>
-          <div class="flex bg-gray-100 dark:bg-gray-700 p-1 rounded-[8px] text-[10px] font-[900]">
+          <div class="flex p-1 rounded-[8px] text-[10px] font-[900]"
+            :class="darkMode ? 'bg-gray-700' : 'bg-gray-100'"
+            >
             <button
               type="button"
               class="px-3 py-1 rounded-[6px]"
-              :class="formData.pricing.type === 'text' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'opacity-40'"
+              :class="formData.pricing.type === 'text' ? (darkMode ? 'bg-gray-600' : 'bg-white') + ' shadow-sm' : 'opacity-40'"
               @click="formData.pricing.type = 'text'"
             >
               TEXT
@@ -382,7 +538,7 @@ const inputClass =
             <button
               type="button"
               class="px-3 py-1 rounded-[6px]"
-              :class="formData.pricing.type === 'image' ? 'bg-white dark:bg-gray-600 shadow-sm' : 'opacity-40'"
+              :class="formData.pricing.type === 'image' ? (darkMode ? 'bg-gray-600' : 'bg-white') + ' shadow-sm' : 'opacity-40'"
               @click="formData.pricing.type = 'image'"
             >
               IMAGE
@@ -415,7 +571,7 @@ const inputClass =
             <template v-else>
               <button
                 type="button"
-                class="text-xs font-bold text-gray-400"
+                class="text-xs font-bold text-white"
                 @click="pricingImageRef?.click()"
               >
                 Upload Pricing Image
@@ -432,11 +588,13 @@ const inputClass =
         </div>
       </form>
 
-      <div class="p-6 border-t dark:border-gray-700 flex gap-4 bg-white dark:bg-gray-800 md:rounded-b-[16px]">
+      <div class="p-6 flex gap-4 md:rounded-b-[16px]"
+        :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-t'"
+      >
         <button
           type="submit"
           class="flex-1 px-6 py-4 rounded-[8px] font-[900] text-lg shadow-xl active:scale-95 transition-all uppercase flex items-center justify-center gap-3"
-          :class="isUploading || isSaving ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed' : 'bg-[#007a67] text-white hover:brightness-105'"
+          :class="isUploading || isSaving ? (darkMode ? 'bg-gray-300 cursor-not-allowed' : 'bg-gray-700 cursor-not-allowed') : 'bg-[#007a67] text-white hover:brightness-105'"
           :disabled="isUploading || isSaving"
           @click="handleSubmit"
         >

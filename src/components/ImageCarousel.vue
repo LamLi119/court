@@ -3,6 +3,7 @@ import { ref } from 'vue';
 
 const props = defineProps<{
   images: string[];
+  onImageClick?: (src: string) => void;
 }>();
 
 const index = ref(0);
@@ -21,23 +22,27 @@ const index = ref(0);
   >
     <div
       class="relative h-[300px] md:h-[450px] rounded-2xl overflow-hidden shadow-xl bg-gray-100 dark:bg-gray-800"
+      :class="onImageClick ? 'cursor-pointer' : ''"
+      @click="onImageClick?.(images[index])"
     >
       <img
         :src="images[index]"
-        class="w-full h-full object-cover transition-opacity duration-300"
+        class="w-full h-full object-cover transition-opacity duration-300 pointer-events-none"
         :alt="`Court photo ${index + 1}`"
       />
 
       <template v-if="images.length > 1">
         <button
-          class="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/70 dark:bg-black/40 backdrop-blur flex items-center justify-center shadow-lg transition-all"
-          @click="index = index === 0 ? images.length - 1 : index - 1"
+          type="button"
+          class="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg text-gray-800 transition-all"
+          @click.stop="index = index === 0 ? images.length - 1 : index - 1"
         >
           ←
         </button>
         <button
-          class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/70 dark:bg-black/40 backdrop-blur flex items-center justify-center shadow-lg transition-all"
-          @click="index = index === images.length - 1 ? 0 : index + 1"
+          type="button"
+          class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg text-gray-800 transition-all"
+          @click.stop="index = index === images.length - 1 ? 0 : index + 1"
         >
           →
         </button>

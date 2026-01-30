@@ -11,8 +11,8 @@ const props = defineProps<{
   onViewDetail: (v: Venue) => void;
   searchQuery: string;
   setSearchQuery: (s: string) => void;
-  mtrFilter: string;
-  setMtrFilter: (s: string) => void;
+  mtrFilter: string[];
+  setMtrFilter: (arr: string[]) => void;
   distanceFilter: string;
   setDistanceFilter: (s: string) => void;
   language: Language;
@@ -42,6 +42,12 @@ const leftListVenues = computed(() =>
         class="p-6 space-y-4 shadow-sm z-10"
         :class="darkMode ? 'bg-gray-800' : 'bg-white'"
       >
+        <h2
+          class="text-[14px] font-[900] uppercase tracking-wider opacity-70"
+          :class="darkMode ? 'text-gray-300' : 'text-gray-600'"
+        >
+          {{ t('multiVenueMapView') }}
+        </h2>
         <div class="relative">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 opacity-50">🔍</span>
           <input
@@ -53,24 +59,30 @@ const leftListVenues = computed(() =>
             @input="e => setSearchQuery((e.target as HTMLInputElement).value)"
           />
         </div>
-        <div class="flex gap-2">
-          <div class="flex-1 relative">
-            <input
-              list="station-list"
-              :value="mtrFilter"
-              :placeholder="t('mtrStation')"
-              class="w-full px-3 py-2 border rounded-[8px] text-sm font-bold focus:ring-2 focus:ring-[#007a67] focus:outline-none transition-all"
-              :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'"
-              @input="e => setMtrFilter((e.target as HTMLInputElement).value)"
-            />
-            <datalist id="station-list">
-              <option
-                v-for="station in availableStations"
-                :key="station"
-                :value="station"
-              />
-            </datalist>
-          </div>
+        <div class="flex gap-2 items-center">
+          <select
+            multiple
+            :value="mtrFilter"
+            class="flex-1 min-h-[42px] px-3 py-2 border rounded-[8px] text-sm font-bold appearance-none transition-all"
+            :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'"
+            @change="e => setMtrFilter(Array.from((e.target as HTMLSelectElement).selectedOptions).map(o => o.value))"
+          >
+            <option
+              v-for="station in availableStations"
+              :key="station"
+              :value="station"
+            >
+              {{ station }}
+            </option>
+          </select>
+          <button
+            type="button"
+            class="flex-shrink-0 px-2 py-1.5 text-[11px] font-bold rounded-[6px] opacity-70 hover:opacity-100 transition-opacity"
+            :class="darkMode ? 'text-gray-400 hover:bg-gray-600' : 'text-gray-500 hover:bg-gray-200'"
+            @click="setMtrFilter([])"
+          >
+            {{ t('allStations') }}
+          </button>
           <select
             :value="distanceFilter"
             class="flex-[0.8] px-3 py-2 border rounded-[8px] text-sm font-bold appearance-none transition-all"

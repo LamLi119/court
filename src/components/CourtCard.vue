@@ -34,9 +34,9 @@ const toggleExpand = (e: MouseEvent) => {
       >
         <div class="w-16 h-16 rounded-[16px] overflow-hidden flex-shrink-0">
           <img
-            :src="venue.images[0] || '/placeholder.svg'"
+            :src="venue.org_icon || venue.images[0] || '/placeholder.svg'"
             class="w-full h-full object-cover"
-            alt=""
+            :alt="venue.name"
           />
         </div>
         <div class="flex-1 min-w-0">
@@ -104,7 +104,7 @@ const toggleExpand = (e: MouseEvent) => {
   >
       <div class="relative h-44 overflow-hidden">
       <img
-        :src="venue.images[0]"
+        :src="venue.org_icon || venue.images[0] || '/placeholder.svg'"
         :alt="venue.name"
         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
       />

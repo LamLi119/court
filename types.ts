@@ -20,6 +20,7 @@ export interface Venue {
   amenities: string[];
   whatsapp: string;
   socialLink?: string;
+  org_icon?: string;
   sort_order?: number;
   coordinates: {
     lat: number;

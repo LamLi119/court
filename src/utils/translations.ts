@@ -5,6 +5,7 @@ export const translations = {
     en: {
         title: "HK Pickleball Finder",
         search: "Search venues...",
+        multiVenueMapView: "Multi-Venue Map View",
         filter: "Filter",
         mtrStation: "MTR Station",
         walkingDistance: "Walking Distance",
@@ -38,6 +39,7 @@ export const translations = {
     zh: {
         title: "香港匹克球場地搜尋",
         search: "搜尋場地...",
+        multiVenueMapView: "多場地地圖",
         filter: "篩選",
         mtrStation: "港鐵站",
         walkingDistance: "步行距離",

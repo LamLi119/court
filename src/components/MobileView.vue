@@ -4,7 +4,6 @@ import type { Venue, Language } from '../../types';
 import MapView from './MapView.vue';
 import MobileVenueCard from './MobileVenueCard.vue';
 import VenueDetail from './VenueDetail.vue';
-import CourtCard from './CourtCard.vue';
 
 const props = defineProps<{
   mode: 'map' | 'list';
@@ -14,8 +13,8 @@ const props = defineProps<{
   onSelectVenue: (v: Venue | null) => void;
   searchQuery: string;
   setSearchQuery: (s: string) => void;
-  mtrFilter: string;
-  setMtrFilter: (s: string) => void;
+  mtrFilter: string[];
+  setMtrFilter: (arr: string[]) => void;
   distanceFilter: string;
   setDistanceFilter: (s: string) => void;
   language: Language;
@@ -125,24 +124,30 @@ const goNextVenue = () => {
           </button>
         </div>
       </div>
-      <div class="flex gap-2 pb-2 pointer-events-auto overflow-hidden">
-        <div class="flex-1 relative">
-          <input
-            list="station-list-mobile"
-            :value="mtrFilter"
-            :placeholder="t('mtrStation')"
-            class="w-full px-4 py-2 border rounded-[8px] text-[12px] font-[700] shadow-md focus:ring-2 focus:ring-[#007a67] focus:outline-none transition-all"
-            :class="darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white border-gray-100'"
-            @input="e => setMtrFilter((e.target as HTMLInputElement).value)"
-          />
-          <datalist id="station-list-mobile">
-            <option
-              v-for="station in availableStations"
-              :key="station"
-              :value="station"
-            />
-          </datalist>
-        </div>
+      <div class="flex gap-2 pb-2 pointer-events-auto overflow-hidden items-center">
+        <select
+          multiple
+          :value="mtrFilter"
+          class="flex-1 min-h-[40px] px-4 py-2 border rounded-[8px] text-[12px] font-[700] shadow-md appearance-none transition-all"
+          :class="darkMode ? 'bg-gray-800 text-white border-gray-700' : 'bg-white border-gray-100'"
+          @change="e => setMtrFilter(Array.from((e.target as HTMLSelectElement).selectedOptions).map(o => o.value))"
+        >
+          <option
+            v-for="station in availableStations"
+            :key="station"
+            :value="station"
+          >
+            {{ station }}
+          </option>
+        </select>
+        <button
+          type="button"
+          class="flex-shrink-0 px-2 py-1.5 text-[10px] font-bold rounded-[6px] opacity-70 hover:opacity-100"
+          :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
+          @click="setMtrFilter([])"
+        >
+          {{ t('allStations') }}
+        </button>
         <select
           :value="distanceFilter"
           class="flex-[0.7] px-4 py-2 border rounded-[8px] text-[12px] font-[700] shadow-md appearance-none transition-all whitespace-nowrap"
@@ -262,24 +267,30 @@ const goNextVenue = () => {
           </button>
         </div>
       </div>
-      <div class="flex gap-2">
-        <div class="flex-1 relative">
-          <input
-            list="station-list-mobile-list"
-            :value="mtrFilter"
-            :placeholder="t('mtrStation')"
-            class="w-full px-3 py-2 border rounded-[8px] text-sm font-bold focus:ring-2 focus:ring-[#007a67] focus:outline-none transition-all"
-            :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'"
-            @input="e => setMtrFilter((e.target as HTMLInputElement).value)"
-          />
-          <datalist id="station-list-mobile-list">
-            <option
-              v-for="station in availableStations"
-              :key="station"
-              :value="station"
-            />
-          </datalist>
-        </div>
+      <div class="flex gap-2 items-center">
+        <select
+          multiple
+          :value="mtrFilter"
+          class="flex-1 min-h-[42px] px-3 py-2 border rounded-[8px] text-sm font-bold appearance-none transition-all"
+          :class="darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'"
+          @change="e => setMtrFilter(Array.from((e.target as HTMLSelectElement).selectedOptions).map(o => o.value))"
+        >
+          <option
+            v-for="station in availableStations"
+            :key="station"
+            :value="station"
+          >
+            {{ station }}
+          </option>
+        </select>
+        <button
+          type="button"
+          class="flex-shrink-0 px-2 py-1.5 text-[11px] font-bold rounded-[6px] opacity-70 hover:opacity-100"
+          :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
+          @click="setMtrFilter([])"
+        >
+          {{ t('allStations') }}
+        </button>
         <select
           :value="distanceFilter"
           class="flex-[0.8] px-3 py-2 border rounded-[8px] text-sm font-bold appearance-none transition-all"
@@ -310,21 +321,25 @@ const goNextVenue = () => {
         </p>
       </div>
 
-      <CourtCard
-        v-for="venue in venues"
+      <div
         v-else
-        :key="venue.id"
-        :venue="venue"
-        :onClick="() => {
-          onSelectVenue(venue);
-          showDetailPage = true;
-        }"
-        :language="language"
-        :t="t"
-        :darkMode="darkMode"
-        :isSaved="savedVenues.includes(venue.id)"
-        :onToggleSave="() => toggleSave(venue.id)"
-      />
+        class="space-y-3"
+      >
+        <MobileVenueCard
+          v-for="venue in venues"
+          :key="venue.id"
+          :venue="venue"
+          :language="language"
+          :t="t"
+          :darkMode="darkMode"
+          :isSaved="savedVenues.includes(venue.id)"
+          :onToggleSave="() => toggleSave(venue.id)"
+          :onViewDetails="() => {
+            onSelectVenue(venue);
+            showDetailPage = true;
+          }"
+        />
+      </div>
     </div>
   </div>
 </template>

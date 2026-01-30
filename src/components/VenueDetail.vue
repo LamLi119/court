@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Venue, Language } from '../../types';
 import ImageCarousel from './ImageCarousel.vue';
-import courtIconUrl from '../assets/green-G.svg';
 
 const props = defineProps<{
   venue: Venue;
@@ -31,6 +30,12 @@ const openGoogleMaps = () => {
   const encodedAddress = encodeURIComponent(props.venue.address);
   window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
 };
+
+const openSocialLink = () => {
+  if (props.venue.socialLink) {
+    window.open(props.venue.socialLink, '_blank');
+  }
+};
 </script>
 
 <template>
@@ -49,7 +54,6 @@ const openGoogleMaps = () => {
         ←
       </button>
       <h1 class="text-lg font-[900] truncate max-w-[200px] md:max-w-md flex items-center gap-2">
-        <img :src="courtIconUrl" alt="" class="w-5 h-5 flex-shrink-0" />
         <span class="truncate">{{ venue.name }}</span>
       </h1>
       <div class="flex gap-2">
@@ -62,7 +66,7 @@ const openGoogleMaps = () => {
         </button>
         <button
           class="p-2 rounded-full"
-          :class="isSaved() ? 'bg-red-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-400'"
+          :class="isSaved() ? 'bg-red-500 text-white' : (darkMode ? 'bg-gray-700 text-gray-500' : 'bg-gray-100 text-gray-500')"
           @click="toggleSave(venue.id)"
         >
           {{ isSaved() ? '❤️' : '🤍' }}
@@ -79,7 +83,6 @@ const openGoogleMaps = () => {
               class="text-[24px] md:text-[32px] font-[900] tracking-tight flex items-center gap-3"
               :class="darkMode ? 'text-white' : 'text-gray-900'"
             >
-              <img :src="courtIconUrl" alt="" class="w-7 h-7 flex-shrink-0" />
               <span>{{ venue.name }}</span>
             </h2>
             <div
@@ -171,7 +174,7 @@ const openGoogleMaps = () => {
               v-if="venue.socialLink"
               class="w-full mt-3 py-3 rounded-[8px] font-[700] text-[14px] border"
               :class="darkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-700'"
-              @click="window.open(venue.socialLink, '_blank')"
+              @click="openSocialLink"
             >
               {{ language === 'en' ? 'View on social' : '查看社群頁面' }}
             </button>

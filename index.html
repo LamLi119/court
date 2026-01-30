@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Ground Court Finder</title>
-    <link rel="icon" type="image/svg+xml" href="/gray-G.png">
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/black-G.png">
+    <link rel="alternate icon" href="/black-G.png">
+    <link rel="apple-touch-icon" href="/black-G.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -68,7 +71,7 @@
             to { transform: rotate(360deg); }
         }
     </style>
-    <script src="https://maps.googleapis.com/maps/api/js?key=%VITE_GOOGLE_MAPS_API_KEY%&libraries=places"></script>
+    <!-- Google Maps API will be loaded dynamically in main.ts -->
 </head>
 <body class="bg-white dark:bg-gray-900 transition-colors custom-scrollbar">
     <div id="root"></div>

@@ -5,6 +5,7 @@ import type { Venue, Language } from '../../types';
 const props = defineProps<{
   venue: Venue;
   onClick: () => void;
+  onViewDetail?: () => void;
   language: Language;
   t: (key: string) => string;
   darkMode: boolean;
@@ -33,7 +34,7 @@ const toggleExpand = (e: MouseEvent) => {
       >
         <div class="w-16 h-16 rounded-[16px] overflow-hidden flex-shrink-0">
           <img
-            :src="venue.images[0] || 'https://via.placeholder.com/150'"
+            :src="venue.images[0] || '/placeholder.svg'"
             class="w-full h-full object-cover"
             alt=""
           />
@@ -85,7 +86,7 @@ const toggleExpand = (e: MouseEvent) => {
           </button>
           <button
             class="flex-[2] py-2.5 bg-[#007a67] text-white rounded-[8px] font-[900] text-xs shadow-md"
-            @click="onClick"
+            @click="onViewDetail ?? onClick"
           >
             {{ t('viewDetails') }}
           </button>
@@ -99,6 +100,7 @@ const toggleExpand = (e: MouseEvent) => {
     class="group cursor-pointer rounded-[16px] overflow-hidden border transition-all duration-300 hover:shadow-2xl"
     :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'"
     @click="onClick"
+    role="button"
   >
       <div class="relative h-44 overflow-hidden">
       <img
@@ -137,7 +139,7 @@ const toggleExpand = (e: MouseEvent) => {
         </span>
         <button
           class="px-4 py-2 bg-[#007a67] text-white rounded-[8px] font-bold text-sm shadow-md group-hover:brightness-110 rounded-[8px]"
-          @click.stop="onClick"
+          @click.stop="onViewDetail ? onViewDetail() : onClick()"
         >
           {{ t('viewDetails') }}
         </button>

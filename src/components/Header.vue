@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Language, AppTab } from '../../types';
-import logoUrl from '../assets/gray-G.png';
+import logoUrl from '../assets/green-G.svg';
 
 const props = defineProps<{
   language: Language;

@@ -200,7 +200,7 @@ const handleOrgIconUpload = async (e: Event) => {
 };
 
 const clearOrgIcon = () => {
-  formData.org_icon = '';
+  formData.org_icon = null;
 };
 
 const handleSubmit = async (e?: Event) => {

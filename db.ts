@@ -15,7 +15,8 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 function rowToVenue(row: any): Venue {
     if (!row) return row;
     const { orgIcon, ...rest } = row;
-    return { ...rest, org_icon: orgIcon } as Venue;
+    // Preserve null values (null means the field was cleared in DB)
+    return { ...rest, org_icon: orgIcon ?? null } as Venue;
 }
 
 // Columns that exist in venues table (match your Supabase schema)
@@ -27,10 +28,22 @@ const VENUE_COLUMNS = new Set([
 
 function venueToRow(venue: Record<string, any>): Record<string, any> {
     const { org_icon, ...rest } = venue;
-    const row: Record<string, any> = { ...rest, ...(org_icon !== undefined && org_icon !== '' && { orgIcon: org_icon }) };
-    const defined = Object.fromEntries(Object.entries(row).filter(([, v]) => v !== undefined));
-    // Only send keys that exist in the DB to avoid 400 from unknown column
-    return Object.fromEntries(Object.entries(defined).filter(([k]) => VENUE_COLUMNS.has(k)));
+    // Build result object manually to ensure null values are preserved
+    const result: Record<string, any> = {};
+    
+    // Copy all valid columns from rest
+    Object.entries(rest).forEach(([key, value]) => {
+        if (VENUE_COLUMNS.has(key) && value !== undefined) {
+            result[key] = value;
+        }
+    });
+    
+    // Handle orgIcon separately - always include if org_icon is defined (even if null)
+    if (org_icon !== undefined && VENUE_COLUMNS.has('orgIcon')) {
+        result.orgIcon = (org_icon === '' || org_icon === null) ? null : org_icon;
+    }
+    
+    return result;
 }
 
 export const db = {
@@ -49,10 +62,25 @@ export const db = {
 
     async upsertVenue(venue: Partial<Venue>): Promise<Venue> {
         const { sort_order: _so, id, ...rest } = venue as any;
+        const needsOrgIconClear = (rest.org_icon === null || rest.org_icon === '');
         const dataToSave = venueToRow(rest);
-        const query = id
-            ? supabase.from('venues').update(dataToSave).eq('id', id).select().single()
-            : supabase.from('venues').insert(dataToSave).select().single();
+        
+        let query;
+        if (id) {
+            // Update existing venue
+            // Build update object ensuring orgIcon is explicitly included if we need to clear it
+            const updateData: Record<string, any> = { ...dataToSave };
+            if (needsOrgIconClear) {
+                // Explicitly set orgIcon to null - ensure it's in the update object
+                updateData.orgIcon = null;
+                console.log('Explicitly setting orgIcon to null for venue:', id, 'Update data:', JSON.stringify(updateData));
+            }
+            query = supabase.from('venues').update(updateData).eq('id', id).select().single();
+        } else {
+            // Insert new venue
+            query = supabase.from('venues').insert(dataToSave).select().single();
+        }
+        
         const { data, error } = await query;
         if (error) {
             console.error('Error saving venue:', {
@@ -60,11 +88,17 @@ export const db = {
                 details: error.details,
                 code: error.code,
                 hint: error.hint,
-                full: error
+                full: error,
+                dataToSave: dataToSave,
+                updateData: id ? (needsOrgIconClear ? { ...dataToSave, orgIcon: null } : dataToSave) : undefined
             });
             throw error;
         }
-        return rowToVenue(data);
+        const result = rowToVenue(data);
+        if (needsOrgIconClear) {
+            console.log('After save - venue org_icon:', result.org_icon, 'DB orgIcon:', data?.orgIcon);
+        }
+        return result;
     },
 
     async deleteVenue(id: number): Promise<void> {

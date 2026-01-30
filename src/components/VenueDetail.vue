@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { Venue, Language } from '../../types';
+import { getStationDisplayName } from '../utils/mtrStations';
 import ImageCarousel from './ImageCarousel.vue';
 
 const props = defineProps<{
@@ -210,7 +211,7 @@ const openSocialLink = (url: string) => {
               class="flex flex-wrap items-center gap-x-4 gap-y-2 text-[14px] font-[400]"
               :class="darkMode ? 'text-gray-400' : 'text-gray-600'"
             >
-              <span>🚇 {{ venue.mtrStation }} ({{ venue.mtrExit }})</span>
+              <span>🚇 {{ getStationDisplayName(venue.mtrStation, language) }} ({{ venue.mtrExit }})</span>
               <span>
                 {{ venue.walkingDistance }} {{ t('min') }} {{ t('walk') }}
               </span>

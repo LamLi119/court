@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { Venue, Language } from '../../types';
+import { getStationDisplayName } from '../utils/mtrStations';
 
 const props = defineProps<{
   venue: Venue;
@@ -50,7 +51,7 @@ const toggleExpand = (e: MouseEvent) => {
             class="text-[14px] font-[400] opacity-70"
             :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
           >
-            🚇 {{ venue.mtrStation }}
+            🚇 {{ getStationDisplayName(venue.mtrStation, language) }}
           </p>
         </div>
         <button
@@ -130,7 +131,7 @@ const toggleExpand = (e: MouseEvent) => {
         class="flex items-center gap-3 text-[14px] font-[400] mb-4"
         :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
       >
-        <span>🚇 {{ venue.mtrStation }}</span>
+        <span>🚇 {{ getStationDisplayName(venue.mtrStation, language) }}</span>
         <span>🚶 {{ venue.walkingDistance }} {{ t('min') }}</span>
       </div>
       <div class="flex items-center justify-between">

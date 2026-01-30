@@ -35,6 +35,8 @@ export const translations = {
         allDistances: "All Distances",
         lessThan5: "< 5 min",
         lessThan10: "< 10 min",
+        mtrUnder5Min: "MTR < 5 min",
+        mtrUnder10Min: "MTR < 10 min",
         walk: "walk"
     },
     zh: {
@@ -70,6 +72,8 @@ export const translations = {
         allDistances: "所有距離",
         lessThan5: "< 5 分鐘",
         lessThan10: "< 10 分鐘",
+        mtrUnder5Min: "港鐵 < 5 分鐘",
+        mtrUnder10Min: "港鐵 < 10 分鐘",
         walk: "步行"
     }
 };

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Venue, Language } from '../../types';
+import { getStationDisplayName } from '../utils/mtrStations';
 
 const props = defineProps<{
   venue: Venue;
@@ -41,7 +42,7 @@ const props = defineProps<{
           class="text-[13px] font-[400] truncate"
           :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
         >
-          🚇 {{ venue.mtrStation }}
+          🚇 {{ getStationDisplayName(venue.mtrStation, language) }}
         </p>
         <div class="flex items-center gap-2 mt-1 text-[12px]">
           <span :class="darkMode ? 'text-gray-400' : 'text-gray-500'">

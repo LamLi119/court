@@ -87,3 +87,17 @@ export function getStationDisplayName(dbValue: string | undefined, lang: Languag
   if (byZhMatch) return lang === 'zh' ? byZhMatch.zh : byZhMatch.en;
   return v;
 }
+
+/**
+ * Get a canonical (English) key for matching stations.
+ * This makes filtering robust when DB/UI uses mixed zh/en station names.
+ */
+export function getStationCanonicalEn(dbValue: string | undefined): string {
+  if (!dbValue || !dbValue.trim()) return '';
+  const v = dbValue.trim();
+  const byEnMatch = byEn.get(v.toLowerCase());
+  if (byEnMatch) return byEnMatch.en;
+  const byZhMatch = byZh.get(v);
+  if (byZhMatch) return byZhMatch.en;
+  return v;
+}

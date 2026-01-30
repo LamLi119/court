@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
 import type { Venue, Language } from '../../types';
+import { getStationDisplayName } from '../utils/mtrStations';
 import MapView from './MapView.vue';
 import MobileVenueCard from './MobileVenueCard.vue';
 import VenueDetail from './VenueDetail.vue';
@@ -25,6 +26,7 @@ const props = defineProps<{
   isAdmin: boolean;
   onEditVenue: (id: number, v: any) => void;
   availableStations: string[];
+  onClearFilters?: () => void;
 }>();
 
 const showDetailPage = ref(false);
@@ -93,7 +95,20 @@ const goNextVenue = () => {
     <div
       class="absolute top-4 left-4 right-4 z-20 space-y-2 pointer-events-none transition-all duration-300"
     >
-      <div class="pointer-events-auto flex items-center gap-2">
+      <div class="pointer-events-auto space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-[900] uppercase tracking-wider opacity-70" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">{{ t('filter') }}</span>
+          <button
+            v-if="onClearFilters"
+            type="button"
+            class="text-[10px] font-bold opacity-70 hover:opacity-100"
+            :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
+            @click="onClearFilters()"
+          >
+            {{ t('clearFilters') }}
+          </button>
+        </div>
+        <div class="pointer-events-auto flex items-center gap-2">
         <div class="flex-1">
           <input
             type="text"
@@ -137,7 +152,7 @@ const goNextVenue = () => {
             :key="station"
             :value="station"
           >
-            {{ station }}
+            {{ getStationDisplayName(station, language) }}
           </option>
         </select>
         <button
@@ -159,6 +174,7 @@ const goNextVenue = () => {
           <option value="10">{{ t('lessThan10') }}</option>
         </select>
       </div>
+    </div>
     </div>
 
     <MapView
@@ -235,6 +251,18 @@ const goNextVenue = () => {
       class="px-4 pt-4 pb-3 space-y-3 border-b"
       :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'"
     >
+      <div class="flex items-center justify-between">
+        <span class="text-[11px] font-[900] uppercase tracking-wider opacity-70" :class="darkMode ? 'text-gray-400' : 'text-gray-500'">{{ t('filter') }}</span>
+        <button
+          v-if="onClearFilters"
+          type="button"
+          class="text-[10px] font-bold opacity-70 hover:opacity-100"
+          :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
+          @click="onClearFilters()"
+        >
+          {{ t('clearFilters') }}
+        </button>
+      </div>
       <div class="flex items-center gap-2">
         <div class="flex-1 relative">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 opacity-50">🔍</span>

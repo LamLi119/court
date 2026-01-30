@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { Venue, Language } from '../../types';
+import { getStationDisplayName } from '../utils/mtrStations';
 import CourtCard from './CourtCard.vue';
 import MapView from './MapView.vue';
 
@@ -25,6 +26,7 @@ const props = defineProps<{
   onEditVenue: (id: number, v: any) => void;
   onDeleteVenue: (id: number) => void;
   availableStations: string[];
+  onClearFilters?: () => void;
 }>();
 
 const leftListVenues = computed(() =>
@@ -42,12 +44,23 @@ const leftListVenues = computed(() =>
         class="p-6 space-y-4 shadow-sm z-10"
         :class="darkMode ? 'bg-gray-800' : 'bg-white'"
       >
-        <h2
-          class="text-[14px] font-[900] uppercase tracking-wider opacity-70"
-          :class="darkMode ? 'text-gray-300' : 'text-gray-600'"
-        >
-          {{ t('multiVenueMapView') }}
-        </h2>
+        <div class="flex items-center justify-between">
+          <h2
+            class="text-[14px] font-[900] uppercase tracking-wider opacity-70"
+            :class="darkMode ? 'text-gray-300' : 'text-gray-600'"
+          >
+            {{ t('filter') }}
+          </h2>
+          <button
+            v-if="onClearFilters"
+            type="button"
+            class="text-[11px] font-bold opacity-70 hover:opacity-100 transition-opacity"
+            :class="darkMode ? 'text-gray-400' : 'text-gray-500'"
+            @click="onClearFilters()"
+          >
+            {{ t('clearFilters') }}
+          </button>
+        </div>
         <div class="relative">
           <span class="absolute left-3 top-1/2 -translate-y-1/2 opacity-50">🔍</span>
           <input
@@ -72,7 +85,7 @@ const leftListVenues = computed(() =>
               :key="station"
               :value="station"
             >
-              {{ station }}
+              {{ getStationDisplayName(station, language) }}
             </option>
           </select>
           <button

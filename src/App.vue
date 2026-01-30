@@ -101,6 +101,12 @@ watch(darkMode, (value) => {
 
 const t = (key: string) => translate(language.value, key);
 
+const clearFilters = () => {
+  searchQuery.value = '';
+  mtrFilter.value = [];
+  distanceFilter.value = '';
+};
+
 const handleAdminLogin = () => {
   if (adminPassword.value === 'admin') {
     isAdmin.value = true;
@@ -391,6 +397,7 @@ const handleMoveDown = async (id: number) => {
           :isAdmin="isAdmin"
           :onEditVenue="(id: number, v: any) => { editingVenue = v; showVenueForm = true; }"
           :availableStations="availableStations"
+          :onClearFilters="clearFilters"
         />
 
         <VenueDetail
@@ -431,6 +438,7 @@ const handleMoveDown = async (id: number) => {
             if (target) venueToDelete = target;
           }"
           :availableStations="availableStations"
+          :onClearFilters="clearFilters"
         />
       </div>
     </main>

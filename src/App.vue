@@ -26,6 +26,7 @@ const venues = ref<Venue[]>([]);
 const savedVenues = ref<number[]>([]);
 
 const selectedVenue = ref<Venue | null>(null);
+const showDesktopDetail = ref(false);
 const searchQuery = ref('');
 const mtrFilter = ref('');
 const distanceFilter = ref('');
@@ -237,7 +238,7 @@ const handleDrop = (targetId: number) => {
       :setTab="(tab: AppTab) => {
         if (tab === 'admin' && !isAdmin) showAdminLogin = true;
         else currentTab = tab;
-        selectedVenue = null;
+        selectedVenue = null; showDesktopDetail = false;
       }"
       :viewMode="mobileViewMode"
       :setViewMode="(mode: 'map' | 'list') => { mobileViewMode = mode; }"
@@ -278,7 +279,7 @@ const handleDrop = (targetId: number) => {
           >
             <div class="flex items-center gap-4 min-w-0">
               <div class="w-16 h-16 rounded-xl overflow-hidden shadow-inner flex-shrink-0">
-                <img :src="v.images[0] || 'https://via.placeholder.com/150'" class="w-full h-full object-cover" alt="" />
+                <img :src="v.images[0] || '/placeholder.svg'" class="w-full h-full object-cover" alt="" />
               </div>
               <div class="min-w-0">
                 <p class="font-black truncate">{{ v.name }}</p>
@@ -339,11 +340,25 @@ const handleDrop = (targetId: number) => {
           :availableStations="availableStations"
         />
 
+        <VenueDetail
+          v-else-if="showDesktopDetail && selectedVenue"
+          :venue="selectedVenue"
+          :onBack="() => { showDesktopDetail = false; }"
+          :language="language"
+          :t="t"
+          :darkMode="darkMode"
+          :savedVenues="savedVenues"
+          :toggleSave="toggleSaveVenue"
+          :isAdmin="isAdmin"
+          :onEdit="() => { editingVenue = selectedVenue; showVenueForm = true; }"
+        />
+
         <DesktopView
           v-else
           :venues="filteredVenues"
           :selectedVenue="selectedVenue"
           :onSelectVenue="(v: Venue | null) => { selectedVenue = v; }"
+          :onViewDetail="(v: Venue) => { selectedVenue = v; showDesktopDetail = true; }"
           :searchQuery="searchQuery"
           :setSearchQuery="(s: string) => { searchQuery = s; }"
           :mtrFilter="mtrFilter"

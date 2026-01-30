@@ -24,7 +24,7 @@ const props = defineProps<{
     >
       <div class="w-20 h-20 rounded-[16px] overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
         <img
-          :src="venue.images[0] || 'https://via.placeholder.com/150'"
+          :src="venue.images[0] || '/placeholder.svg'"
           :alt="venue.name"
           class="w-full h-full object-cover"
         />

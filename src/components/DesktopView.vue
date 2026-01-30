@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { Venue, Language } from '../../types';
 import CourtCard from './CourtCard.vue';
 import MapView from './MapView.vue';
@@ -7,6 +8,7 @@ const props = defineProps<{
   venues: Venue[];
   selectedVenue: Venue | null;
   onSelectVenue: (v: Venue | null) => void;
+  onViewDetail: (v: Venue) => void;
   searchQuery: string;
   setSearchQuery: (s: string) => void;
   mtrFilter: string;
@@ -24,6 +26,10 @@ const props = defineProps<{
   onDeleteVenue: (id: number) => void;
   availableStations: string[];
 }>();
+
+const leftListVenues = computed(() =>
+  props.selectedVenue ? [props.selectedVenue] : props.venues
+);
 </script>
 
 <template>
@@ -86,8 +92,17 @@ const props = defineProps<{
       </div>
 
       <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+        <button
+          v-if="selectedVenue"
+          type="button"
+          class="w-full mb-2 py-2 text-sm font-bold rounded-[8px] transition-colors"
+          :class="darkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-200'"
+          @click="onSelectVenue(null)"
+        >
+          ← {{ language === 'en' ? 'Show all courts' : '顯示全部場地' }}
+        </button>
         <div
-          v-if="venues.length === 0"
+          v-if="leftListVenues.length === 0"
           class="text-center py-20 space-y-4"
         >
           <div class="text-6xl opacity-20">🏸</div>
@@ -98,18 +113,20 @@ const props = defineProps<{
             {{ t('noVenues') }}
           </p>
         </div>
-        <CourtCard
-          v-for="venue in venues"
-          v-else
-          :key="venue.id"
-          :venue="venue"
-          :onClick="() => onSelectVenue(venue)"
-          :language="language"
-          :t="t"
-          :darkMode="darkMode"
-          :isSaved="savedVenues.includes(venue.id)"
-          :onToggleSave="() => toggleSave(venue.id)"
-        />
+        <template v-else>
+          <CourtCard
+            v-for="venue in leftListVenues"
+            :key="venue.id"
+            :venue="venue"
+            :onClick="() => onSelectVenue(venue)"
+            :onViewDetail="() => onViewDetail(venue)"
+            :language="language"
+            :t="t"
+            :darkMode="darkMode"
+            :isSaved="savedVenues.includes(venue.id)"
+            :onToggleSave="() => toggleSave(venue.id)"
+          />
+        </template>
       </div>
     </div>
 

@@ -41,7 +41,7 @@ const openFindEvents = () => {
             <img :src="logoUrl" alt="TheGround.io" class="w-10 h-10" />
           </div>
           <h1 class="hidden sm:block text-[20px] font-[900] tracking-tighter text-[#007a67]">
-            TheGround.io
+            Courts Finder
           </h1>
         </div>
 

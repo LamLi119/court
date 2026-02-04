@@ -34,14 +34,42 @@ const distanceFilter = ref('');
 const darkMode = ref(localStorage.getItem('pickleball_darkmode') === 'true');
 const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
 
+const VENUES_CACHE_KEY = 'pickleball_venues_cache';
+const VENUES_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
+
 const loadData = async () => {
   try {
+    // Show cached data immediately for faster repeat loads
+    const cachedRaw = sessionStorage.getItem(VENUES_CACHE_KEY);
+    if (cachedRaw) {
+      try {
+        const { data: cached, ts } = JSON.parse(cachedRaw);
+        if (Array.isArray(cached) && typeof ts === 'number' && Date.now() - ts < VENUES_CACHE_TTL_MS) {
+          venues.value = cached;
+          adminOrder.value = cached.map((v: Venue) => v.id);
+          saveAdminOrder();
+          isLoading.value = false;
+          // Revalidate in background
+          const fresh = await db.getVenues();
+          if (fresh?.length !== undefined) {
+            venues.value = fresh;
+            adminOrder.value = fresh.map(v => v.id);
+            saveAdminOrder();
+            sessionStorage.setItem(VENUES_CACHE_KEY, JSON.stringify({ data: fresh, ts: Date.now() }));
+          }
+          return;
+        }
+      } catch {
+        // ignore invalid cache
+      }
+    }
+
     isLoading.value = true;
     const data = await db.getVenues();
     venues.value = data || [];
-    // Home list order follows DB sort_order (same as admin drag order)
     adminOrder.value = venues.value.map(v => v.id);
     saveAdminOrder();
+    sessionStorage.setItem(VENUES_CACHE_KEY, JSON.stringify({ data: venues.value, ts: Date.now() }));
   } catch (err) {
     console.error('Error fetching venues from DB:', err);
   } finally {
@@ -49,13 +77,38 @@ const loadData = async () => {
   }
 };
 
+const invalidateVenuesCache = () => {
+  sessionStorage.removeItem(VENUES_CACHE_KEY);
+};
+
 const handleResize = () => {
   isMobile.value = window.innerWidth < 1024;
 };
 
+const ADMIN_PATH = '/admin';
+
+function isAdminPath(): boolean {
+  const path = window.location.pathname;
+  return path === ADMIN_PATH || path.endsWith('/admin');
+}
+
+function syncAdminUrl(show: boolean) {
+  const base = typeof import.meta.env?.BASE_URL === 'string' ? import.meta.env.BASE_URL : '/';
+  const targetPath = show ? (base.replace(/\/$/, '') + ADMIN_PATH) : base.replace(/\/$/, '') || '/';
+  if (window.location.pathname !== targetPath) {
+    if (show) history.pushState({}, '', targetPath);
+    else history.replaceState({}, '', targetPath);
+  }
+}
+
 onMounted(() => {
-  loadData();
+  if (isAdminPath()) showAdminLogin.value = true;
+  const onPopState = () => { showAdminLogin.value = isAdminPath(); };
+  window.addEventListener('popstate', onPopState);
   window.addEventListener('resize', handleResize);
+  (window as any).__adminPopState = onPopState;
+
+  loadData();
 
   try {
     const saved = localStorage.getItem('pickleball_saved_ids');
@@ -73,6 +126,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize);
+  const onPopState = (window as any).__adminPopState;
+  if (onPopState) window.removeEventListener('popstate', onPopState);
 });
 
 // All unique MTR stations from DB (trimmed, deduped, sorted)
@@ -159,6 +214,7 @@ const confirmDeleteAction = async () => {
     await db.deleteVenue(venueToDelete.value.id);
     venues.value = venues.value.filter(v => v.id !== venueToDelete.value!.id);
     savedVenues.value = savedVenues.value.filter(id => id !== venueToDelete.value!.id);
+    invalidateVenuesCache();
   } catch (err) {
     alert('Failed to delete venue.');
   } finally {
@@ -176,6 +232,7 @@ const handleSaveVenue = async (venueData: any) => {
   } else {
     venues.value = [...venues.value, saved];
   }
+  invalidateVenuesCache();
   showVenueForm.value = false;
   editingVenue.value = null;
   selectedVenue.value = null;
@@ -317,7 +374,7 @@ const saveSortEdit = async () => {
       :language="language"
       :setLanguage="(l: Language) => { language = l; }"
       :isAdmin="isAdmin"
-      :onAdminClick="() => { if (isAdmin) currentTab = 'admin'; else showAdminLogin = true; }"
+      :onAdminClick="() => { if (isAdmin) currentTab = 'admin'; else { showAdminLogin = true; syncAdminUrl(true); } }"
       :darkMode="darkMode"
       :setDarkMode="(d: boolean) => { darkMode = d; }"
       :t="t"
@@ -453,10 +510,38 @@ const saveSortEdit = async () => {
       <div v-else>
         <div
           v-if="isLoading"
-          class="flex-1 flex flex-col items-center justify-center min-h-[60vh] space-y-4"
+          class="flex-1 p-4 md:p-6 animate-in fade-in duration-300"
+          aria-busy="true"
+          aria-label="Loading courts"
         >
-          <div class="spinner"></div>
-          <p class="font-black text-sm tracking-widest opacity-50 uppercase">
+          <div class="max-w-4xl mx-auto space-y-4">
+            <div
+              v-for="i in 6"
+              :key="i"
+              class="rounded-2xl overflow-hidden border shadow-sm flex gap-4 p-4 items-center"
+              :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'"
+            >
+              <div
+                class="w-16 h-16 md:w-20 md:h-20 rounded-xl flex-shrink-0 animate-pulse"
+                :class="darkMode ? 'bg-gray-700' : 'bg-gray-300'"
+              />
+              <div class="flex-1 min-w-0 space-y-2">
+                <div
+                  class="h-5 w-3/4 rounded animate-pulse"
+                  :class="darkMode ? 'bg-gray-700' : 'bg-gray-300'"
+                />
+                <div
+                  class="h-4 w-1/2 rounded animate-pulse"
+                  :class="darkMode ? 'bg-gray-700' : 'bg-gray-300'"
+                />
+                <div
+                  class="h-4 w-1/4 rounded animate-pulse"
+                  :class="darkMode ? 'bg-gray-700' : 'bg-gray-300'"
+                />
+              </div>
+            </div>
+          </div>
+          <p class="text-center font-black text-sm tracking-widest opacity-50 uppercase mt-6">
             Syncing Courts...
           </p>
         </div>
@@ -524,6 +609,8 @@ const saveSortEdit = async () => {
           }"
           :availableStations="availableStations"
           :onClearFilters="clearFilters"
+          :currentTab="currentTab"
+          :setTab="(t: AppTab) => { currentTab = t; }"
         />
       </div>
     </main>
@@ -533,7 +620,7 @@ const saveSortEdit = async () => {
       :password="adminPassword"
       :setPassword="(val: string) => { adminPassword = val; }"
       :onLogin="handleAdminLogin"
-      :onClose="() => { showAdminLogin = false; }"
+      :onClose="() => { showAdminLogin = false; syncAdminUrl(false); }"
       :language="language"
       :t="t"
       :darkMode="darkMode"

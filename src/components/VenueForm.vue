@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import type { Venue, Language } from '../../types';
 
 declare const google: any;
@@ -83,6 +83,101 @@ const pricingImageRef = ref<HTMLInputElement | null>(null);
 const orgIconInputRef = ref<HTMLInputElement | null>(null);
 const addressInputRef = ref<HTMLInputElement | null>(null);
 const autocompleteRef = ref<any>(null);
+const descriptionEditorRef = ref<HTMLDivElement | null>(null);
+let savedEditorRange: Range | null = null;
+
+onMounted(() => {
+  nextTick(() => {
+    const el = descriptionEditorRef.value;
+    if (el) {
+      el.innerHTML = formData.description || '';
+      const saveRange = () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0 && el.contains(sel.anchorNode)) {
+          savedEditorRange = sel.getRangeAt(0).cloneRange();
+        }
+      };
+      el.addEventListener('mouseup', saveRange);
+      el.addEventListener('keyup', saveRange);
+      el.addEventListener('blur', saveRange);
+      const onSelectionChange = () => {
+        if (document.activeElement === el) saveRange();
+      };
+      document.addEventListener('selectionchange', onSelectionChange);
+      (el as any).__selectionChangeHandler = onSelectionChange;
+    }
+  });
+});
+
+onBeforeUnmount(() => {
+  const el = descriptionEditorRef.value;
+  if (el && (el as any).__selectionChangeHandler) {
+    document.removeEventListener('selectionchange', (el as any).__selectionChangeHandler);
+  }
+});
+
+function focusEditorAndRestoreSelection() {
+  const el = descriptionEditorRef.value;
+  if (!el) return;
+  el.focus();
+  const sel = window.getSelection();
+  if (!sel) return;
+  if (savedEditorRange) {
+    try {
+      sel.removeAllRanges();
+      sel.addRange(savedEditorRange);
+      return;
+    } catch {
+      savedEditorRange = null;
+    }
+  }
+  // No saved selection: put caret at end of editor so block/list/link apply there
+  try {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } catch {
+    // ignore
+  }
+}
+
+function applyFormat(command: 'bold' | 'italic' | 'underline' | 'strikeThrough', e: MouseEvent) {
+  e.preventDefault();
+  focusEditorAndRestoreSelection();
+  document.execCommand(command, false);
+}
+
+function applyBlockFormat(blockTag: 'p' | 'h1' | 'h2' | 'blockquote' | 'pre', e: MouseEvent) {
+  e.preventDefault();
+  focusEditorAndRestoreSelection();
+  document.execCommand('formatBlock', false, blockTag);
+}
+
+function insertList(ordered: boolean, e: MouseEvent) {
+  e.preventDefault();
+  focusEditorAndRestoreSelection();
+  document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false);
+}
+
+function insertLink(e: MouseEvent) {
+  e.preventDefault();
+  focusEditorAndRestoreSelection();
+  const url = prompt('Enter URL:', 'https://');
+  if (url != null && url.trim()) document.execCommand('createLink', false, url.trim());
+}
+
+function getDescriptionHtml(): string {
+  const html = descriptionEditorRef.value?.innerHTML ?? '';
+  return html.trim() || '';
+}
+
+const toolbarBtnClass =
+  'w-9 h-9 rounded-lg border flex items-center justify-center text-sm font-medium transition-colors shrink-0 ';
+function toolbarClass(dark: boolean) {
+  return dark ? 'bg-gray-700 border-gray-600 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200';
+}
 
 // Init Places autocomplete if available
 if (typeof window !== 'undefined') {
@@ -203,13 +298,57 @@ const clearOrgIcon = () => {
   formData.org_icon = null;
 };
 
+// Geocode address to get correct lat/lng before save (so map pins are right)
+function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof google === 'undefined' || !google.maps || !google.maps.Geocoder) {
+      resolve(null);
+      return;
+    }
+    const geocoder = new google.maps.Geocoder();
+    const trimmed = (address || '').trim();
+    if (!trimmed) {
+      resolve(null);
+      return;
+    }
+    geocoder.geocode(
+      { address: trimmed, region: 'HK', componentRestrictions: { country: 'HK' } },
+      (results: any[] | null, status: string) => {
+        if (status !== 'OK' || !results?.[0]?.geometry?.location) {
+          resolve(null);
+          return;
+        }
+        const loc = results[0].geometry.location;
+        resolve({ lat: loc.lat(), lng: loc.lng() });
+      }
+    );
+  });
+}
+
 const handleSubmit = async (e?: Event) => {
   if (e) e.preventDefault();
   if (isUploading.value || isSaving.value) return;
+  formData.description = getDescriptionHtml();
   isSaving.value = true;
   saveError.value = null;
   try {
     formData.socialLink = buildSocialLinkJson(formData.socialLinks);
+
+    // Always geocode the address on save so we store correct lat/lng for the map
+    if (formData.address && (typeof formData.address === 'string' ? formData.address.trim() : '')) {
+      const coords = await geocodeAddress(formData.address);
+      if (coords) {
+        formData.coordinates = coords;
+      } else {
+        saveError.value =
+          props.language === 'en'
+            ? 'Could not find location for this address. Please select an address from the dropdown or check the address.'
+            : '無法根據此地址找到位置，請從下拉選單選擇地址或檢查地址是否正確。';
+        isSaving.value = false;
+        return;
+      }
+    }
+
     await props.onSave(formData);
   } catch (err: any) {
     saveError.value = err?.message || 'An unexpected error occurred while saving.';
@@ -407,11 +546,34 @@ const inputClass =
 
         <div>
           <label :class="labelClass">Description</label>
-          <textarea
-            v-model="formData.description"
-            class="h-24"
-            :class="inputClass"
-            placeholder="Describe the court highlights..."
+          <div
+            class="flex flex-wrap gap-1 mb-2 p-2 rounded-t-[12px] border border-b-0"
+            :class="darkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-gray-50 border-gray-200'"
+            role="toolbar"
+            aria-label="Format description"
+          >
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Bold" @mousedown="applyFormat('bold', $event)">B</button>
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Italic" class="italic" @mousedown="applyFormat('italic', $event)">I</button>
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Underline" class="underline" @mousedown="applyFormat('underline', $event)">U</button>
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Strikethrough" class="line-through" @mousedown="applyFormat('strikeThrough', $event)">S</button>
+            <span class="w-px h-6 self-center bg-gray-300 dark:bg-gray-600 mx-0.5" aria-hidden="true" />
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Blockquote" @mousedown="applyBlockFormat('blockquote', $event)">"</button>
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Code block" @mousedown="applyBlockFormat('pre', $event)">&lt;/&gt;</button>
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Insert link" @mousedown="insertLink($event)">🔗</button>
+            <span class="w-px h-6 self-center bg-gray-300 dark:bg-gray-600 mx-0.5" aria-hidden="true" />
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Numbered list" @mousedown="insertList(true, $event)">1.</button>
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Bullet list" @mousedown="insertList(false, $event)">•</button>
+            <span class="w-px h-6 self-center bg-gray-300 dark:bg-gray-600 mx-0.5" aria-hidden="true" />
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Heading 1" @mousedown="applyBlockFormat('h1', $event)">H1</button>
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Heading 2" @mousedown="applyBlockFormat('h2', $event)">H2</button>
+            <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Paragraph" @mousedown="applyBlockFormat('p', $event)">P</button>
+          </div>
+          <div
+            ref="descriptionEditorRef"
+            contenteditable="true"
+            class="description-editor min-h-[8rem] px-4 py-3 border rounded-b-[12px] focus:outline-none transition text-left"
+            :class="darkMode ? 'bg-gray-700 border-gray-600 text-white border-t-0' : 'bg-white border-gray-200 text-gray-900 border-t-0'"
+            data-placeholder="Type something..."
           />
         </div>
 
@@ -617,3 +779,9 @@ const inputClass =
   </div>
 </template>
 
+<style scoped>
+.description-editor:empty::before {
+  content: attr(data-placeholder);
+  opacity: 0.5;
+}
+</style>

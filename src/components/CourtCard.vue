@@ -38,6 +38,7 @@ const toggleExpand = (e: MouseEvent) => {
             :src="venue.images[0] || '/placeholder.svg'"
             class="w-full h-full object-cover"
             :alt="venue.name"
+            loading="lazy"
           />
         </div>
         <div class="flex-1 min-w-0">
@@ -108,6 +109,7 @@ const toggleExpand = (e: MouseEvent) => {
         :src="venue.images[0] || '/placeholder.svg'"
         :alt="venue.name"
         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+        loading="lazy"
       />
       <div class="absolute top-2 right-2">
         <button

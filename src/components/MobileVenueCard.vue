@@ -28,6 +28,7 @@ const props = defineProps<{
           :src="venue.images[0] || '/placeholder.svg'"
           :alt="venue.name"
           class="w-full h-full object-cover"
+          loading="lazy"
         />
       </div>
 

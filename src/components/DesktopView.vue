@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue';
-import type { Venue, Language } from '../../types';
+import type { Venue, Language, AppTab } from '../../types';
 import { getStationDisplayName } from '../utils/mtrStations';
 import CourtCard from './CourtCard.vue';
 import MapView from './MapView.vue';
@@ -59,6 +59,8 @@ const props = defineProps<{
   onDeleteVenue: (id: number) => void;
   availableStations: string[];
   onClearFilters?: () => void;
+  currentTab: AppTab;
+  setTab: (t: AppTab) => void;
 }>();
 
 const leftListVenues = computed(() =>
@@ -227,7 +229,7 @@ const leftListVenues = computed(() =>
         </button>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+      <div class="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 custom-scrollbar">
         <button
           v-if="selectedVenue"
           type="button"
@@ -263,6 +265,23 @@ const leftListVenues = computed(() =>
             :onToggleSave="() => toggleSave(venue.id)"
           />
         </template>
+      </div>
+
+      <div
+        class="flex-shrink-0 p-4 border-t"
+        :class="darkMode ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'"
+      >
+        <button
+          type="button"
+          class="w-full flex items-center justify-center gap-2 py-3 rounded-[8px] text-[14px] font-bold transition-all"
+          :class="currentTab === 'saved'
+            ? 'bg-red-500/15 text-red-500'
+            : (darkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-200')"
+          @click="setTab(currentTab === 'saved' ? 'explore' : 'saved')"
+        >
+          <span>❤️</span>
+          <span>{{ t('saved') }}</span>
+        </button>
       </div>
     </div>
 

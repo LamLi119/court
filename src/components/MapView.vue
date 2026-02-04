@@ -33,21 +33,8 @@ const DARK_MODE_STYLE = [
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] }
 ];
 
-onMounted(() => {
-  const handleAuthError = () => {
-    mapError.value =
-      "API Restricted: Please enable 'Maps JavaScript API' and 'Places API' for this key in Google Cloud Console.";
-  };
-
-  window.addEventListener('google-maps-auth-error', handleAuthError as EventListener);
-
-  if (typeof google === 'undefined' || !google.maps) {
-    mapError.value = 'Google Maps failed to load. Please check your internet connection or API Key.';
-    return;
-  }
-
-  if (!mapRef.value || googleMap.value) return;
-
+function initMap() {
+  if (typeof google === 'undefined' || !google.maps || !mapRef.value || googleMap.value) return;
   try {
     googleMap.value = new google.maps.Map(mapRef.value, {
       center: props.isMobile ? { lat: 22.2499, lng: 114.1194 } : { lat: 22.3499, lng: 114.1194 },
@@ -63,9 +50,28 @@ onMounted(() => {
     console.error('Error initializing map:', err);
     mapError.value = 'Error initializing Google Maps. This usually means the API Key is restricted.';
   }
+}
+
+onMounted(() => {
+  const handleAuthError = () => {
+    mapError.value =
+      "API Restricted: Please enable 'Maps JavaScript API' and 'Places API' for this key in Google Cloud Console.";
+  };
+
+  const onReady = () => initMap();
+
+  window.addEventListener('google-maps-auth-error', handleAuthError as EventListener);
+  window.addEventListener('google-maps-ready', onReady);
+
+  if (typeof google !== 'undefined' && google.maps) {
+    initMap();
+  } else {
+    mapError.value = null; // clear so we show loading until ready or auth-error
+  }
 
   onBeforeUnmount(() => {
     window.removeEventListener('google-maps-auth-error', handleAuthError as EventListener);
+    window.removeEventListener('google-maps-ready', onReady);
   });
 });
 
@@ -197,11 +203,51 @@ const markerIconUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
   </svg>
 `)}`;
 
+// Valid ranges: lat -90..90, lng -180..180 (Hong Kong ~22.3, 114.1)
+const isValidLat = (n: number) => typeof n === 'number' && !Number.isNaN(n) && n >= -90 && n <= 90;
+const isValidLng = (n: number) => typeof n === 'number' && !Number.isNaN(n) && n >= -180 && n <= 180;
+
 const normalizeLatLng = (coords: any): { lat: number; lng: number } | null => {
   if (!coords) return null;
-  const lat = typeof coords.lat === 'string' ? parseFloat(coords.lat) : coords.lat;
-  const lng = typeof coords.lng === 'string' ? parseFloat(coords.lng) : coords.lng;
-  if (typeof lat !== 'number' || typeof lng !== 'number' || Number.isNaN(lat) || Number.isNaN(lng)) return null;
+
+  let lat: number;
+  let lng: number;
+
+  // GeoJSON Point: { type: 'Point', coordinates: [lng, lat] }
+  if (coords.type === 'Point' && Array.isArray(coords.coordinates) && coords.coordinates.length >= 2) {
+    lng = typeof coords.coordinates[0] === 'string' ? parseFloat(coords.coordinates[0]) : coords.coordinates[0];
+    lat = typeof coords.coordinates[1] === 'string' ? parseFloat(coords.coordinates[1]) : coords.coordinates[1];
+  }
+  // Plain { lat, lng } or { latitude, longitude }
+  else if (('lat' in coords && 'lng' in coords) || ('latitude' in coords && 'longitude' in coords)) {
+    lat = typeof (coords.lat ?? coords.latitude) === 'string' ? parseFloat(coords.lat ?? coords.latitude) : (coords.lat ?? coords.latitude);
+    lng = typeof (coords.lng ?? coords.longitude) === 'string' ? parseFloat(coords.lng ?? coords.longitude) : (coords.lng ?? coords.longitude);
+  }
+  // Array: [lat, lng] or [lng, lat] — infer by valid ranges
+  else if (Array.isArray(coords) && coords.length >= 2) {
+    const a = typeof coords[0] === 'string' ? parseFloat(coords[0]) : coords[0];
+    const b = typeof coords[1] === 'string' ? parseFloat(coords[1]) : coords[1];
+    if (isValidLat(a) && isValidLng(b)) {
+      lat = a;
+      lng = b;
+    } else if (isValidLng(a) && isValidLat(b)) {
+      lng = a;
+      lat = b;
+    } else {
+      return null;
+    }
+  } else {
+    return null;
+  }
+
+  if (!isValidLat(lat) || !isValidLng(lng)) {
+    // Common mistake: lat/lng swapped (e.g. HK would become lat 114, lng 22)
+    if (isValidLat(lng) && isValidLng(lat)) {
+      [lat, lng] = [lng, lat];
+    } else {
+      return null;
+    }
+  }
   return { lat, lng };
 };
 
@@ -302,7 +348,10 @@ watch(
   () => props.selectedVenue,
   (selected) => {
     if (selected && googleMap.value && typeof google !== 'undefined') {
-      googleMap.value.panTo(selected.coordinates);
+      const pos = normalizeLatLng((selected as any).coordinates);
+      if (pos) {
+        googleMap.value.panTo(pos);
+      }
       googleMap.value.setZoom(15);
       Object.values(markers.value).forEach((m) => m.setAnimation(null));
       const selectedMarker = markers.value[selected.id];

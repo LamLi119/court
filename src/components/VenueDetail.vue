@@ -4,6 +4,52 @@ import type { Venue, Language } from '../../types';
 import { getStationDisplayName } from '../utils/mtrStations';
 import ImageCarousel from './ImageCarousel.vue';
 
+const ALLOWED_TAGS = new Set([
+  'b', 'i', 'u', 's', 'strong', 'em', 'br', 'p', 'span', 'div',
+  'blockquote', 'pre', 'code', 'a', 'ul', 'ol', 'li',
+  'h1', 'h2', 'h3'
+]);
+const VOID_TAGS = new Set(['br']);
+const ALLOWED_ATTR = new Set(['href', 'target', 'rel']);
+
+function decodeHtmlEntities(str: string): string {
+  if (typeof document === 'undefined') return str;
+  const el = document.createElement('textarea');
+  el.innerHTML = str;
+  return el.value;
+}
+
+function escapeAttr(val: string): string {
+  return val.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function sanitizeNode(node: Node): string {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+  if (node.nodeType !== Node.ELEMENT_NODE) return '';
+  const el = node as Element;
+  const tag = el.tagName.toLowerCase();
+  if (!ALLOWED_TAGS.has(tag)) return Array.from(el.childNodes).map(sanitizeNode).join('');
+  let out = '<' + tag;
+  for (const attr of el.attributes) {
+    if (ALLOWED_ATTR.has(attr.name.toLowerCase())) out += ' ' + attr.name + '="' + escapeAttr(attr.value) + '"';
+  }
+  out += '>';
+  if (!VOID_TAGS.has(tag)) {
+    for (const child of el.childNodes) out += sanitizeNode(child);
+    out += '</' + tag + '>';
+  }
+  return out;
+}
+
+function sanitizeDescription(html: string | undefined): string {
+  if (!html?.trim()) return '';
+  const decoded = decodeHtmlEntities(html);
+  if (typeof DOMParser === 'undefined') return decoded;
+  const doc = new DOMParser().parseFromString('<div>' + decoded + '</div>', 'text/html');
+  const div = doc.body.firstElementChild;
+  return div ? Array.from(div.childNodes).map(sanitizeNode).join('') : '';
+}
+
 const props = defineProps<{
   venue: Venue;
   onBack: () => void;
@@ -221,26 +267,26 @@ const openSocialLink = (url: string) => {
             </div>
             <div
               v-if="venue.description"
-              class="text-[14px] font-[400] leading-relaxed"
+              class="text-[14px] font-[400] leading-relaxed description-html"
               :class="darkMode ? 'text-gray-300' : 'text-gray-600'"
-            >
-              {{ venue.description }}
-            </div>
-            <div
-              class="p-6 rounded-[16px] border"
-              :class="darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-gray-50 border-gray-100 text-gray-700'"
-            >
-              <h3 class="font-bold mb-2 opacity-60 text-xs uppercase tracking-wider">
-                Location
-              </h3>
-              <p class="text-[16px] mb-4">
-                {{ venue.address }}
-              </p>
-              <button
-                class="px-4 py-2 rounded-[8px] bg-[#007a67] text-white font-bold"
-                @click="openGoogleMaps"
+              v-html="sanitizeDescription(venue.description)"
+            ></div>
+            <div class="space-y-2">
+              <h3 class="text-[11px] uppercase tracking-widest font-bold opacity-60">{{ t('pricing') }}</h3>
+              <div
+                v-if="venue.pricing.type === 'text' && venue.pricing.content"
+                class="p-4 rounded-[12px] border text-[14px]"
+                :class="darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'"
               >
-                📍 Open in Google Maps
+                {{ venue.pricing.content }}
+              </div>
+              <button
+                v-else-if="venue.pricing.imageUrl"
+                type="button"
+                class="w-full rounded-[12px] overflow-hidden border dark:border-gray-600 cursor-pointer block text-left"
+                @click="openFullscreen(venue.pricing.imageUrl!)"
+              >
+                <img :src="venue.pricing.imageUrl" class="w-full" alt="Pricing" />
               </button>
             </div>
             <!-- Desktop: social links at left bottom with full URL -->
@@ -265,26 +311,8 @@ const openSocialLink = (url: string) => {
                 </div>
               </div>
             </template>
-            <!-- Mobile: pricing, social links, Book now (no fixed bar) -->
+            <!-- Mobile: social links, Book now (no fixed bar) -->
             <div class="lg:hidden space-y-6 pt-4">
-              <div class="space-y-2">
-                <h3 class="text-[11px] uppercase tracking-widest font-bold opacity-60">{{ t('pricing') }}</h3>
-                <div
-                  v-if="venue.pricing.type === 'text' && venue.pricing.content"
-                  class="p-4 rounded-[12px] border text-[14px]"
-                  :class="darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'"
-                >
-                  {{ venue.pricing.content }}
-                </div>
-                <button
-                  v-else-if="venue.pricing.imageUrl"
-                  type="button"
-                  class="w-full rounded-[12px] overflow-hidden border dark:border-gray-600 cursor-pointer block text-left"
-                  @click="openFullscreen(venue.pricing.imageUrl!)"
-                >
-                  <img :src="venue.pricing.imageUrl" class="w-full" alt="Pricing" />
-                </button>
-              </div>
               <template v-if="socialLinksList().length > 0">
                 <div class="space-y-2">
                   <h3 class="text-[11px] uppercase tracking-widest font-bold opacity-60">
@@ -306,8 +334,6 @@ const openSocialLink = (url: string) => {
                   </div>
                 </div>
               </template>
-              <div class="p-4 rounded-[16px] border" :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'">
-              </div>
             </div>
           </div>
         </div>
@@ -317,25 +343,25 @@ const openSocialLink = (url: string) => {
             class="sticky top-24 space-y-6 p-8 rounded-[16px] shadow-2xl border"
             :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'"
           >
+          
             <div class="space-y-4">
               <h3 class="text-[12px] uppercase tracking-widest font-bold opacity-50">
-                {{ t('pricing') }}
+                Location
               </h3>
               <div
-                v-if="venue.pricing.type === 'text'"
-                class="p-4 rounded-[12px] border text-[14px]"
-                :class="darkMode ? 'bg-gray-700/50 border-gray-600 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'"
+              class="p-6 rounded-[16px] border"
+                :class="darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-gray-50 border-gray-100 text-gray-700'"
               >
-                {{ venue.pricing.content }}
-              </div>
-              <button
-                v-else-if="venue.pricing.imageUrl"
-                type="button"
-                class="w-full rounded-[12px] overflow-hidden border dark:border-gray-600 cursor-pointer block text-left"
-                @click="openFullscreen(venue.pricing.imageUrl!)"
-              >
-                <img :src="venue.pricing.imageUrl" class="w-full" alt="Pricing" />
-              </button>
+                <p class="text-[14px] leading-relaxed" :class="darkMode ? 'text-gray-300' : 'text-gray-700'">
+                  {{ venue.address }}
+                </p>
+                <button
+                  class="w-full px-4 py-3 rounded-[8px] bg-[#007a67] text-white font-bold"
+                  @click="openGoogleMaps"
+                >
+                  📍 Open in Google Maps
+                </button>
+              </div> 
             </div>
             <span class="text-[12px] uppercase tracking-widest font-bold opacity-50 block mb-1">
               Starting from
@@ -381,3 +407,18 @@ const openSocialLink = (url: string) => {
   </div>
 </template>
 
+<style scoped>
+.description-html :deep(h1) { font-size: 1.5rem; font-weight: 800; margin: 0.75em 0 0.25em; }
+.description-html :deep(h2) { font-size: 1.25rem; font-weight: 700; margin: 0.5em 0 0.25em; }
+.description-html :deep(h3) { font-size: 1.1rem; font-weight: 600; margin: 0.5em 0 0.25em; }
+.description-html :deep(blockquote) { border-left: 4px solid currentColor; padding-left: 1rem; margin: 0.5em 0; opacity: 0.9; }
+.description-html :deep(pre),
+.description-html :deep(code) { font-family: ui-monospace, monospace; font-size: 0.9em; background: rgba(0,0,0,0.06); padding: 0.15em 0.4em; border-radius: 4px; }
+.description-html :deep(pre) { display: block; padding: 0.75rem; overflow-x: auto; }
+.description-html :deep(div) { display: block; margin: 0.35em 0; }
+.description-html :deep(ul) { list-style: disc; padding-left: 1.5rem; margin: 0.5em 0; }
+.description-html :deep(ol) { list-style: decimal; padding-left: 1.5rem; margin: 0.5em 0; }
+.description-html :deep(li) { margin: 0.25em 0; }
+.description-html :deep(a) { color: #007a67; text-decoration: underline; }
+.description-html :deep(a:hover) { opacity: 0.85; }
+</style>

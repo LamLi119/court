@@ -386,7 +386,7 @@ const openSocialLink = (url: string) => {
 
     <!-- Mobile: fixed bar – Book now only -->
     <div
-      class="fixed bottom-16 left-0 right-0 z-50 p-4 border-t lg:hidden"
+      class="fixed bottom-0 left-0 right-0 z-50 p-4 border-t lg:hidden"
       :class="darkMode ? 'bg-gray-800/95 border-gray-700' : 'bg-white/95 border-gray-200'"
     >
       <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">

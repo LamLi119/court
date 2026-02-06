@@ -84,7 +84,9 @@ const orgIconInputRef = ref<HTMLInputElement | null>(null);
 const addressInputRef = ref<HTMLInputElement | null>(null);
 const autocompleteRef = ref<any>(null);
 const descriptionEditorRef = ref<HTMLDivElement | null>(null);
+const pricingEditorRef = ref<HTMLDivElement | null>(null);
 let savedEditorRange: Range | null = null;
+let savedPricingRange: Range | null = null;
 
 onMounted(() => {
   nextTick(() => {
@@ -106,6 +108,25 @@ onMounted(() => {
       document.addEventListener('selectionchange', onSelectionChange);
       (el as any).__selectionChangeHandler = onSelectionChange;
     }
+
+    const pel = pricingEditorRef.value;
+    if (pel) {
+      pel.innerHTML = formData.pricing?.content || '';
+      const savePricingRange = () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0 && pel.contains(sel.anchorNode)) {
+          savedPricingRange = sel.getRangeAt(0).cloneRange();
+        }
+      };
+      pel.addEventListener('mouseup', savePricingRange);
+      pel.addEventListener('keyup', savePricingRange);
+      pel.addEventListener('blur', savePricingRange);
+      const onSelectionChangePricing = () => {
+        if (document.activeElement === pel) savePricingRange();
+      };
+      document.addEventListener('selectionchange', onSelectionChangePricing);
+      (pel as any).__selectionChangeHandler = onSelectionChangePricing;
+    }
   });
 });
 
@@ -113,6 +134,10 @@ onBeforeUnmount(() => {
   const el = descriptionEditorRef.value;
   if (el && (el as any).__selectionChangeHandler) {
     document.removeEventListener('selectionchange', (el as any).__selectionChangeHandler);
+  }
+  const pel = pricingEditorRef.value;
+  if (pel && (pel as any).__selectionChangeHandler) {
+    document.removeEventListener('selectionchange', (pel as any).__selectionChangeHandler);
   }
 });
 
@@ -170,6 +195,62 @@ function insertLink(e: MouseEvent) {
 
 function getDescriptionHtml(): string {
   const html = descriptionEditorRef.value?.innerHTML ?? '';
+  return html.trim() || '';
+}
+
+function focusPricingEditorAndRestoreSelection() {
+  const el = pricingEditorRef.value;
+  if (!el) return;
+  el.focus();
+  const sel = window.getSelection();
+  if (!sel) return;
+  if (savedPricingRange) {
+    try {
+      sel.removeAllRanges();
+      sel.addRange(savedPricingRange);
+      return;
+    } catch {
+      savedPricingRange = null;
+    }
+  }
+  try {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  } catch {
+    // ignore
+  }
+}
+
+function applyPricingFormat(command: 'bold' | 'italic' | 'underline' | 'strikeThrough', e: MouseEvent) {
+  e.preventDefault();
+  focusPricingEditorAndRestoreSelection();
+  document.execCommand(command, false);
+}
+
+function applyPricingBlockFormat(blockTag: 'p' | 'h1' | 'h2' | 'blockquote' | 'pre', e: MouseEvent) {
+  e.preventDefault();
+  focusPricingEditorAndRestoreSelection();
+  document.execCommand('formatBlock', false, blockTag);
+}
+
+function insertPricingList(ordered: boolean, e: MouseEvent) {
+  e.preventDefault();
+  focusPricingEditorAndRestoreSelection();
+  document.execCommand(ordered ? 'insertOrderedList' : 'insertUnorderedList', false);
+}
+
+function insertPricingLink(e: MouseEvent) {
+  e.preventDefault();
+  focusPricingEditorAndRestoreSelection();
+  const url = prompt('Enter URL:', 'https://');
+  if (url != null && url.trim()) document.execCommand('createLink', false, url.trim());
+}
+
+function getPricingHtml(): string {
+  const html = pricingEditorRef.value?.innerHTML ?? '';
   return html.trim() || '';
 }
 
@@ -329,6 +410,12 @@ const handleSubmit = async (e?: Event) => {
   if (e) e.preventDefault();
   if (isUploading.value || isSaving.value) return;
   formData.description = getDescriptionHtml();
+  if (formData.pricing?.type === 'text') {
+    formData.pricing = {
+      ...formData.pricing,
+      content: getPricingHtml()
+    };
+  }
   isSaving.value = true;
   saveError.value = null;
   try {
@@ -339,13 +426,6 @@ const handleSubmit = async (e?: Event) => {
       const coords = await geocodeAddress(formData.address);
       if (coords) {
         formData.coordinates = coords;
-      } else {
-        saveError.value =
-          props.language === 'en'
-            ? 'Could not find location for this address. Please select an address from the dropdown or check the address.'
-            : '無法根據此地址找到位置，請從下拉選單選擇地址或檢查地址是否正確。';
-        isSaving.value = false;
-        return;
       }
     }
 
@@ -685,7 +765,7 @@ const inputClass =
         </div>
 
         <div class="space-y-4">
-          <label :class="labelClass">Pricing Info</label>
+          <label :class="labelClass">Pricing Info (HTML supported)</label>
           <div class="flex p-1 rounded-[8px] text-[10px] font-[900]"
             :class="darkMode ? 'bg-gray-700' : 'bg-gray-100'"
             >
@@ -706,12 +786,40 @@ const inputClass =
               IMAGE
             </button>
           </div>
-          <textarea
+          <div
             v-if="formData.pricing.type === 'text'"
-            v-model="formData.pricing.content"
-            class="h-24"
-            :class="inputClass"
-          />
+            class="space-y-2"
+          >
+            <div
+              class="flex flex-wrap gap-1 mb-1 p-2 rounded-t-[12px] border border-b-0"
+              :class="darkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-gray-50 border-gray-200'"
+              role="toolbar"
+              aria-label="Format pricing"
+            >
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Bold" @mousedown="applyPricingFormat('bold', $event)">B</button>
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Italic" class="italic" @mousedown="applyPricingFormat('italic', $event)">I</button>
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Underline" class="underline" @mousedown="applyPricingFormat('underline', $event)">U</button>
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Strikethrough" class="line-through" @mousedown="applyPricingFormat('strikeThrough', $event)">S</button>
+              <span class="w-px h-6 self-center bg-gray-300 dark:bg-gray-600 mx-0.5" aria-hidden="true" />
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Blockquote" @mousedown="applyPricingBlockFormat('blockquote', $event)">"</button>
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Code block" @mousedown="applyPricingBlockFormat('pre', $event)">&lt;/&gt;</button>
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Insert link" @mousedown="insertPricingLink($event)">🔗</button>
+              <span class="w-px h-6 self-center bg-gray-300 dark:bg-gray-600 mx-0.5" aria-hidden="true" />
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Numbered list" @mousedown="insertPricingList(true, $event)">1.</button>
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Bullet list" @mousedown="insertPricingList(false, $event)">•</button>
+              <span class="w-px h-6 self-center bg-gray-300 dark:bg-gray-600 mx-0.5" aria-hidden="true" />
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Heading 1" @mousedown="applyPricingBlockFormat('h1', $event)">H1</button>
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Heading 2" @mousedown="applyPricingBlockFormat('h2', $event)">H2</button>
+              <button type="button" :class="toolbarBtnClass + toolbarClass(darkMode)" title="Paragraph" @mousedown="applyPricingBlockFormat('p', $event)">P</button>
+            </div>
+            <div
+              ref="pricingEditorRef"
+              contenteditable="true"
+              class="description-editor min-h-[6rem] px-4 py-3 border rounded-b-[12px] focus:outline-none transition text-left"
+              :class="darkMode ? 'bg-gray-700 border-gray-600 text-white border-t-0' : 'bg-white border-gray-200 text-gray-900 border-t-0'"
+              data-placeholder="Type pricing details..."
+            />
+          </div>
           <div
             v-else
             class="relative h-40 border-2 border-dashed rounded-[12px] flex items-center justify-center bg-gray-50 dark:bg-gray-700/50 overflow-hidden"

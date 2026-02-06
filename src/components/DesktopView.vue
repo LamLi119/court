@@ -9,7 +9,7 @@ const MapView = defineAsyncComponent(() => import('./MapView.vue'));
 const showFilterPanel = ref(false);
 const mtrSearchQuery = ref('');
 const draftMtrFilter = ref<string[]>([]);
-const mapViewRef = ref<{ clearPins?: () => void; syncPins?: () => void } | null>(null);
+const mapViewRef = ref<{ clearPins?: () => void; syncPins?: () => void; resetView?: () => void } | null>(null);
 
 watch(
   () => showFilterPanel.value,
@@ -236,7 +236,7 @@ const leftListVenues = computed(() =>
           type="button"
           class="w-full mb-2 py-2 text-sm font-bold rounded-[8px] transition-colors"
           :class="darkMode ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-200'"
-          @click="onSelectVenue(null)"
+          @click="async () => { onSelectVenue(null); await nextTick(); mapViewRef?.resetView?.(); }"
         >
           ← {{ language === 'en' ? 'Show all courts' : '顯示全部場地' }}
         </button>

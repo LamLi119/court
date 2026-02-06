@@ -275,11 +275,10 @@ const openSocialLink = (url: string) => {
               <h3 class="text-[11px] uppercase tracking-widest font-bold opacity-60">{{ t('pricing') }}</h3>
               <div
                 v-if="venue.pricing.type === 'text' && venue.pricing.content"
-                class="p-4 rounded-[12px] border text-[14px]"
+                class="p-4 rounded-[12px] border text-[14px] description-html"
                 :class="darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'"
-              >
-                {{ venue.pricing.content }}
-              </div>
+                v-html="sanitizeDescription(venue.pricing.content)"
+              ></div>
               <button
                 v-else-if="venue.pricing.imageUrl"
                 type="button"

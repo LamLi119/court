@@ -703,7 +703,7 @@ const saveSortEdit = async () => {
       </div>
     </div>
 
-    <MobileNav
+    <!-- <MobileNav
       v-if="isMobile"
       :currentTab="currentTab"
       :setTab="(t: AppTab) => { currentTab = t; }"
@@ -711,7 +711,7 @@ const saveSortEdit = async () => {
       :darkMode="darkMode"
       :isAdmin="isAdmin"
       :onAdminClick="() => { if (isAdmin) currentTab = 'admin'; else { showAdminLogin = true; syncAdminUrl(true); } }"
-    />
+    /> -->
   </div>
 </template>
 

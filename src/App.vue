@@ -179,13 +179,13 @@ const clearFilters = () => {
 };
 
 const handleAdminLogin = () => {
-  if (adminPassword.value === 'admin') {
+  if (adminPassword.value === 'abc321A!') {
     isAdmin.value = true;
     showAdminLogin.value = false;
     adminPassword.value = '';
     currentTab.value = 'admin';
   } else {
-    alert('Incorrect password (Hint: admin)');
+    alert('Incorrect password');
   }
 };
 

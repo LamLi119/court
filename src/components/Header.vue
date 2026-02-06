@@ -41,7 +41,7 @@ const openFindEvents = () => {
             <img :src="logoUrl" alt="TheGround.io" class="w-10 h-10" />
           </div>
           <h1 class="hidden sm:block text-[20px] font-[900] tracking-tighter text-[#007a67]">
-            Courts Finder
+            Court Finder HK
           </h1>
         </div>
 
@@ -59,13 +59,6 @@ const openFindEvents = () => {
             @click="setTab('saved')"
           >
             SAVED
-          </button>
-          <button
-            class="text-[11px] md:text-[14px] font-[900] tracking-widest transition-all"
-            :class="currentTab === 'admin' ? 'text-blue-500' : 'text-gray-400 hover:text-gray-600'"
-            @click="setTab('admin')"
-          >
-            ADMIN
           </button>
         </nav>
       </div>
@@ -105,6 +98,14 @@ const openFindEvents = () => {
             中文
           </button>
         </div>
+        <button
+          class="p-2 rounded-[8px] text-[14px] md:text-[16px] transition-all"
+          :class="darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-500 hover:text-gray-800'"
+          @click="onAdminClick"
+          aria-label="Admin"
+        >
+          🔑
+        </button>
       </div>
     </div>
   </header>

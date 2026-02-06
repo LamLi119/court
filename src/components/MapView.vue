@@ -289,22 +289,6 @@ const clearAllMarkers = () => {
   markers.value = {};
 };
 
-// Allow parent components to force clear/re-sync pins (e.g. on "Go search")
-defineExpose({
-  clearPins: async () => {
-    clearAllMarkers();
-    // Wait for browser paint so user sees pins disappear immediately.
-    await new Promise<void>((resolve) => {
-      if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      } else {
-        resolve();
-      }
-    });
-  },
-  syncPins: () => syncMarkers()
-});
-
 const syncMarkers = () => {
   if (!googleMap.value || typeof google === 'undefined') return;
   // Force-rebuild markers every time venues change.
@@ -331,6 +315,50 @@ const syncMarkers = () => {
     markers.value[venue.id] = marker;
   });
 };
+
+const fitToAllVenues = () => {
+  if (!googleMap.value || typeof google === 'undefined') return;
+  const visibleMarkers = Object.values(markers.value).filter(Boolean) as any[];
+  if (visibleMarkers.length === 0) {
+    // Fallback to default HK view
+    googleMap.value.setCenter(props.isMobile ? { lat: 22.2499, lng: 114.1194 } : { lat: 22.3499, lng: 114.1194 });
+    googleMap.value.setZoom(props.isMobile ? 10 : 11);
+    return;
+  }
+  const bounds = new google.maps.LatLngBounds();
+  visibleMarkers.forEach((m) => {
+    if (typeof m.getPosition === 'function') {
+      const pos = m.getPosition();
+      if (pos) bounds.extend(pos);
+    }
+  });
+  if (bounds.isEmpty()) return;
+  googleMap.value.fitBounds(bounds);
+  // Prevent zooming in too far when courts are very close
+  google.maps.event.addListenerOnce(googleMap.value, 'bounds_changed', () => {
+    const targetZoom = props.isMobile ? 10 : 11;
+    if (googleMap.value.getZoom() > targetZoom) {
+      googleMap.value.setZoom(targetZoom);
+    }
+  });
+};
+
+// Allow parent components to force clear/re-sync pins (e.g. on "Go search")
+defineExpose({
+  clearPins: async () => {
+    clearAllMarkers();
+    // Wait for browser paint so user sees pins disappear immediately.
+    await new Promise<void>((resolve) => {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      } else {
+        resolve();
+      }
+    });
+  },
+  syncPins: () => syncMarkers(),
+  resetView: () => fitToAllVenues()
+});
 
 watch(
   () => props.darkMode,

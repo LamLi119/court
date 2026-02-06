@@ -10,7 +10,7 @@ const MapView = defineAsyncComponent(() => import('./MapView.vue'));
 const showFilterPanel = ref(false);
 const mtrSearchQuery = ref('');
 const draftMtrFilter = ref<string[]>([]);
-const mapViewRef = ref<{ clearPins?: () => void; syncPins?: () => void } | null>(null);
+const mapViewRef = ref<{ clearPins?: () => void; syncPins?: () => void; resetView?: () => void } | null>(null);
 
 watch(
   () => showFilterPanel.value,
@@ -309,11 +309,11 @@ const goNextVenue = () => {
           <span v-if="currentIndex >= 0"> {{ currentIndex + 1 }}/{{ venues.length }}</span>
         </span>
         <div class="flex items-center gap-2">
-          <button
-            class="w-8 h-8 rounded-full flex items-center justify-center text-[16px]"
-            :class="darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-500'"
-            @click.stop="onSelectVenue(null)"
-          >
+            <button
+              class="w-8 h-8 rounded-full flex items-center justify-center text-[16px]"
+              :class="darkMode ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-500'"
+              @click.stop="async () => { onSelectVenue(null); await nextTick(); mapViewRef?.resetView?.(); }"
+            >
             ×
           </button>
         </div>
@@ -459,10 +459,11 @@ const goNextVenue = () => {
           </h3>
           <button
             type="button"
-            class="text-gray-400 hover:text-gray-600 text-lg leading-none"
-            @click="showFilterPanel = false"
+            class="text-[11px] font-bold px-3 py-1 rounded-[999px] border border-transparent hover:border-gray-400 transition-colors"
+            :class="darkMode ? 'text-gray-200 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'"
+            @click="() => { setMtrFilter([...draftMtrFilter]); showFilterPanel = false; mtrSearchQuery = ''; }"
           >
-            ×
+            {{ language === 'en' ? 'Go search' : '開始搜尋' }}
           </button>
         </div>
         <div class="relative">
@@ -481,17 +482,17 @@ const goNextVenue = () => {
             :key="station"
             type="button"
             class="w-full flex items-center gap-2 px-2.5 py-2 rounded-[8px] text-left text-[11px] font-bold transition-all"
-            :class="mtrFilter.includes(station) 
+            :class="draftMtrFilter.includes(station)
               ? (darkMode ? 'bg-[#007a67] text-white' : 'bg-[#007a67] text-white')
               : (darkMode ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' : 'bg-white text-gray-700 hover:bg-gray-100')"
             @click="toggleMtrStation(station)"
           >
             <div class="w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0"
-              :class="mtrFilter.includes(station) 
-                ? 'bg-[#007a67] border-[#007a67]' 
+              :class="draftMtrFilter.includes(station)
+                ? 'bg-[#007a67] border-[#007a67]'
                 : (darkMode ? 'border-gray-500' : 'border-gray-300')"
             >
-              <svg v-if="mtrFilter.includes(station)" xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg v-if="draftMtrFilter.includes(station)" xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
               </svg>
             </div>
@@ -503,7 +504,7 @@ const goNextVenue = () => {
             type="button"
             class="flex-1 px-3 py-2 text-[11px] font-bold rounded-[8px]"
             :class="darkMode ? 'text-gray-300 bg-gray-800 hover:bg-gray-700' : 'text-gray-600 bg-gray-200 hover:bg-gray-300'"
-            @click="setMtrFilter([]); mtrSearchQuery = ''"
+            @click="() => { draftMtrFilter = []; setMtrFilter([]); mtrSearchQuery = ''; }"
           >
             {{ t('allStations') }}
           </button>
@@ -512,7 +513,7 @@ const goNextVenue = () => {
             type="button"
             class="flex-1 px-3 py-2 text-[11px] font-bold rounded-[8px]"
             :class="darkMode ? 'text-gray-300 bg-gray-800 hover:bg-gray-700' : 'text-gray-600 bg-gray-200 hover:bg-gray-300'"
-            @click="onClearFilters(); showFilterPanel = false; mtrSearchQuery = ''"
+            @click="() => { onClearFilters(); showFilterPanel = false; mtrSearchQuery = ''; }"
           >
             {{ t('clearFilters') }}
           </button>

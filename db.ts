@@ -6,7 +6,11 @@ const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.error('Missing Supabase configuration. Please ensure SUPABASE_URL and SUPABASE_ANON_KEY are set in your environment.');
+  const msg =
+    'Missing Supabase config: SUPABASE_URL or SUPABASE_ANON_KEY is empty. ' +
+    'Set them in .env for local dev; for production, set env vars in your host (Vercel/Netlify/etc.) and rebuild. ' +
+    'Otherwise the app will get ERR_NAME_NOT_RESOLVED when fetching.';
+  console.error(msg);
 }
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -48,6 +52,11 @@ function venueToRow(venue: Record<string, any>): Record<string, any> {
 
 export const db = {
     async getVenues(): Promise<Venue[]> {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+            throw new Error(
+                'Supabase URL or anon key is missing. Add SUPABASE_URL and SUPABASE_ANON_KEY to .env (and in your deployment env), then rebuild.'
+            );
+        }
         const { data, error } = await supabase
             .from('venues')
             .select('*')

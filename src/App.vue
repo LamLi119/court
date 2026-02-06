@@ -37,6 +37,21 @@ const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 1024 : 
 const VENUES_CACHE_KEY = 'pickleball_venues_cache';
 const VENUES_CACHE_TTL_MS = 3 * 60 * 1000; // 3 minutes
 
+function setVenuesCache(data: Venue[], ts: number): void {
+  try {
+    sessionStorage.setItem(VENUES_CACHE_KEY, JSON.stringify({ data, ts }));
+  } catch (e) {
+    if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.code === 22)) {
+      try {
+        sessionStorage.removeItem(VENUES_CACHE_KEY);
+      } catch {
+        // ignore
+      }
+    }
+    // Skip cache when quota exceeded or any other error; app works without cache
+  }
+}
+
 const loadData = async () => {
   try {
     // Show cached data immediately for faster repeat loads
@@ -55,7 +70,7 @@ const loadData = async () => {
             venues.value = fresh;
             adminOrder.value = fresh.map(v => v.id);
             saveAdminOrder();
-            sessionStorage.setItem(VENUES_CACHE_KEY, JSON.stringify({ data: fresh, ts: Date.now() }));
+            setVenuesCache(fresh, Date.now());
           }
           return;
         }
@@ -69,7 +84,7 @@ const loadData = async () => {
     venues.value = data || [];
     adminOrder.value = venues.value.map(v => v.id);
     saveAdminOrder();
-    sessionStorage.setItem(VENUES_CACHE_KEY, JSON.stringify({ data: venues.value, ts: Date.now() }));
+    setVenuesCache(venues.value, Date.now());
   } catch (err) {
     console.error('Error fetching venues from DB:', err);
   } finally {
@@ -445,7 +460,7 @@ const saveSortEdit = async () => {
             :class="darkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'"
             :draggable="isSortEditing"
             @dragstart="handleDragStart(v.id)"
-            @dragover.prevent="isSortEditing"
+            @dragover.prevent
             @drop="handleDrop(v.id)"
           >
             <div class="flex items-center gap-2 flex-shrink-0">

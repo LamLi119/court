@@ -710,6 +710,7 @@ const saveSortEdit = async () => {
       :t="t"
       :darkMode="darkMode"
       :isAdmin="isAdmin"
+      :onAdminClick="() => { if (isAdmin) currentTab = 'admin'; else { showAdminLogin = true; syncAdminUrl(true); } }"
     />
   </div>
 </template>

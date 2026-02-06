@@ -7,6 +7,7 @@ const props = defineProps<{
   t: (key: string) => string;
   darkMode: boolean;
   isAdmin?: boolean;
+  onAdminClick: () => void;
 }>();
 </script>
 
@@ -43,7 +44,7 @@ const props = defineProps<{
       :class="currentTab === 'admin' ? 'text-blue-500 scale-110' : 'text-gray-400'"
       @click="setTab('admin')"
     >
-      <span class="text-xl">⚙️</span>
+      <span class="text-xl">🔑</span>
       <span class="text-[10px] font-bold uppercase tracking-wider">
         {{ t('admin') }}
       </span>

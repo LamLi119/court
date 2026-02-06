@@ -310,8 +310,8 @@ const openSocialLink = (url: string) => {
                 </div>
               </div>
             </template>
-            <!-- Mobile: social links, Book now (no fixed bar) -->
-            <div class="lg:hidden space-y-6 pt-4">
+            <!-- Mobile: social links – leave extra space above fixed bar -->
+            <div class="lg:hidden space-y-6 pt-4 pb-24">
               <template v-if="socialLinksList().length > 0">
                 <div class="space-y-2">
                   <h3 class="text-[11px] uppercase tracking-widest font-bold opacity-60">

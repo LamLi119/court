@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue';
+import { computed, defineAsyncComponent, ref, watch, nextTick } from 'vue';
 import type { Venue, Language, AppTab } from '../../types';
 import { getStationDisplayName } from '../utils/mtrStations';
 import CourtCard from './CourtCard.vue';
-import MapView from './MapView.vue';
+
+const MapView = defineAsyncComponent(() => import('./MapView.vue'));
 
 const showFilterPanel = ref(false);
 const mtrSearchQuery = ref('');

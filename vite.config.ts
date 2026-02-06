@@ -2,6 +2,7 @@ import path from 'path';
 import fs from 'fs';
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -10,8 +11,19 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: '0.0.0.0',
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vue: ['vue'],
+            supabase: ['@supabase/supabase-js'],
+          },
+        },
+      },
+    },
     plugins: [
       vue(),
+      tailwindcss(),
       {
         name: 'spa-fallback-admin',
         configureServer(server) {

@@ -1,132 +1,149 @@
-// venues table: sort_order (int), org_icon (text), social_link (text) – see supabase-migrations/add_venue_columns.sql
-import { createClient } from '@supabase/supabase-js';
+// Database: Google Cloud SQL via backend API (see server/ and CLOUD_SQL_SETUP.md).
+// Set VITE_API_URL in .env to your backend URL (e.g. http://localhost:3001).
 import { Venue } from './types';
 
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+// Empty = same-origin (e.g. Vercel: frontend and /api/* on same domain). Set for local dev or external API.
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  const msg =
-    'Missing Supabase config: SUPABASE_URL or SUPABASE_ANON_KEY is empty. ' +
-    'Set them in .env for local dev; for production, set env vars in your host (Vercel/Netlify/etc.) and rebuild. ' +
-    'Otherwise the app will get ERR_NAME_NOT_RESOLVED when fetching.';
-  console.error(msg);
+if (import.meta.env.DEV && !API_BASE) {
+  console.warn(
+    'VITE_API_URL is not set. For local dev with the Node server, set VITE_API_URL=http://localhost:3001 in .env'
+  );
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Your DB uses quoted camelCase ("mtrStation", "socialLink", "orgIcon"). App uses org_icon.
+// DB uses quoted camelCase ("mtrStation", "socialLink", "orgIcon"). App uses org_icon.
 function rowToVenue(row: any): Venue {
-    if (!row) return row;
-    const { orgIcon, ...rest } = row;
-    // Preserve null values (null means the field was cleared in DB)
-    return { ...rest, org_icon: orgIcon ?? null } as Venue;
+  if (!row) return row;
+
+  // Parse images from string back to array
+  let images = row.images;
+  if (typeof images === 'string') {
+    try {
+      images = JSON.parse(images);
+    } catch (e) {
+      images = [];
+    }
+  }
+
+  // Parse coordinates from string
+  let coords = row.coordinates;
+  if (typeof coords === 'string') {
+    try {
+      coords = JSON.parse(coords);
+    } catch (e) {
+      coords = null;
+    }
+  }
+
+  // Parse pricing from string (JSON object)
+  let pricing = row.pricing;
+  if (typeof pricing === 'string') {
+    try {
+      pricing = JSON.parse(pricing);
+    } catch (e) {
+      pricing = { type: 'text' as const, content: '' };
+    }
+  }
+  if (!pricing || typeof pricing !== 'object') {
+    pricing = { type: 'text' as const, content: '' };
+  }
+
+  // Parse amenities from string (JSON array)
+  let amenities = row.amenities;
+  if (typeof amenities === 'string') {
+    try {
+      amenities = JSON.parse(amenities);
+    } catch (e) {
+      amenities = [];
+    }
+  }
+
+  const { orgIcon, ...rest } = row;
+  return {
+    ...rest,
+    images: Array.isArray(images) ? images : [],
+    coordinates: coords,
+    pricing: pricing,
+    amenities: Array.isArray(amenities) ? amenities : [],
+    org_icon: orgIcon ?? null,
+  } as Venue;
 }
 
-// Columns that exist in venues table (match your Supabase schema)
 const VENUE_COLUMNS = new Set([
-    'name', 'description', 'mtrStation', 'mtrExit', 'walkingDistance', 'address',
-    'ceilingHeight', 'startingPrice', 'pricing', 'images', 'amenities', 'whatsapp',
-    'socialLink', 'orgIcon', 'coordinates', 'sort_order'
+  'name', 'description', 'mtrStation', 'mtrExit', 'walkingDistance', 'address',
+  'ceilingHeight', 'startingPrice', 'pricing', 'images', 'amenities', 'whatsapp',
+  'socialLink', 'orgIcon', 'coordinates', 'sort_order',
 ]);
 
 function venueToRow(venue: Record<string, any>): Record<string, any> {
-    const { org_icon, ...rest } = venue;
-    // Build result object manually to ensure null values are preserved
-    const result: Record<string, any> = {};
-    
-    // Copy all valid columns from rest
-    Object.entries(rest).forEach(([key, value]) => {
-        if (VENUE_COLUMNS.has(key) && value !== undefined) {
-            result[key] = value;
-        }
-    });
-    
-    // Handle orgIcon separately - always include if org_icon is defined (even if null)
-    if (org_icon !== undefined && VENUE_COLUMNS.has('orgIcon')) {
-        result.orgIcon = (org_icon === '' || org_icon === null) ? null : org_icon;
-    }
-    
-    return result;
+  const { org_icon, ...rest } = venue;
+  const result: Record<string, any> = {};
+  Object.entries(rest).forEach(([key, value]) => {
+    if (VENUE_COLUMNS.has(key) && value !== undefined) result[key] = value;
+  });
+  if (org_icon !== undefined && VENUE_COLUMNS.has('orgIcon')) {
+    result.orgIcon = (org_icon === '' || org_icon === null) ? null : org_icon;
+  }
+  return result;
+}
+
+async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
+  const base = API_BASE.replace(/\/$/, '');
+  const url = path.startsWith('/') ? `${base}${path}` : `${base}/${path}`;
+  return fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...options?.headers } });
 }
 
 export const db = {
-    async getVenues(): Promise<Venue[]> {
-        if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-            throw new Error(
-                'Supabase URL or anon key is missing. Add SUPABASE_URL and SUPABASE_ANON_KEY to .env (and in your deployment env), then rebuild.'
-            );
-        }
-        const { data, error } = await supabase
-            .from('venues')
-            .select('*')
-            .order('sort_order', { ascending: true, nullsFirst: false })
-            .order('name', { ascending: true });
-        if (error) {
-            console.error('Error fetching venues:', error);
-            throw error;
-        }
-        return ((data || []) as any[]).map(rowToVenue);
-    },
-
-    async upsertVenue(venue: Partial<Venue>): Promise<Venue> {
-        const { sort_order: _so, id, ...rest } = venue as any;
-        const needsOrgIconClear = (rest.org_icon === null || rest.org_icon === '');
-        const dataToSave = venueToRow(rest);
-        
-        let query;
-        if (id) {
-            // Update existing venue
-            // Build update object ensuring orgIcon is explicitly included if we need to clear it
-            const updateData: Record<string, any> = { ...dataToSave };
-            if (needsOrgIconClear) {
-                // Explicitly set orgIcon to null - ensure it's in the update object
-                updateData.orgIcon = null;
-                console.log('Explicitly setting orgIcon to null for venue:', id, 'Update data:', JSON.stringify(updateData));
-            }
-            query = supabase.from('venues').update(updateData).eq('id', id).select().single();
-        } else {
-            // Insert new venue
-            query = supabase.from('venues').insert(dataToSave).select().single();
-        }
-        
-        const { data, error } = await query;
-        if (error) {
-            console.error('Error saving venue:', {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                full: error,
-                dataToSave: dataToSave,
-                updateData: id ? (needsOrgIconClear ? { ...dataToSave, orgIcon: null } : dataToSave) : undefined
-            });
-            throw error;
-        }
-        const result = rowToVenue(data);
-        if (needsOrgIconClear) {
-            console.log('After save - venue org_icon:', result.org_icon, 'DB orgIcon:', data?.orgIcon);
-        }
-        return result;
-    },
-
-    async deleteVenue(id: number): Promise<void> {
-        const { error } = await supabase
-            .from('venues')
-            .delete()
-            .eq('id', id);
-
-        if (error) {
-            console.error('Error deleting venue:', error);
-            throw error;
-        }
-    },
-
-    async updateVenueOrder(orderedIds: number[]): Promise<void> {
-        await Promise.all(
-            orderedIds.map((id, index) =>
-                supabase.from('venues').update({ sort_order: index }).eq('id', id)
-            )
-        );
+  async getVenues(): Promise<Venue[]> {
+    // Empty API_BASE = same-origin (e.g. Vercel). No throw.
+    const res = await apiFetch('/api/venues');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || res.statusText);
     }
+    const data = await res.json();
+    return (Array.isArray(data) ? data : []).map((row: any) => rowToVenue(row));
+  },
+
+  async upsertVenue(venue: Partial<Venue>): Promise<Venue> {
+    // Empty API_BASE = same-origin (e.g. Vercel). No throw.
+    const { sort_order: _so, id, ...rest } = venue as any;
+    const needsOrgIconClear = (rest.org_icon === null || rest.org_icon === '');
+    const dataToSave = venueToRow(rest);
+    if (needsOrgIconClear) (dataToSave as Record<string, unknown>).orgIcon = null;
+
+    const method = id ? 'PUT' : 'POST';
+    const path = id ? `/api/venues/${id}` : '/api/venues';
+    const res = await apiFetch(path, {
+      method,
+      body: JSON.stringify(id ? (needsOrgIconClear ? { ...dataToSave, orgIcon: null } : dataToSave) : dataToSave),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || res.statusText);
+    }
+    const data = await res.json();
+    return rowToVenue(data);
+  },
+
+  async deleteVenue(id: number): Promise<void> {
+    // Empty API_BASE = same-origin (e.g. Vercel). No throw.
+    const res = await apiFetch(`/api/venues/${id}`, { method: 'DELETE' });
+    if (!res.ok && res.status !== 204) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || res.statusText);
+    }
+  },
+
+  async updateVenueOrder(orderedIds: number[]): Promise<void> {
+    // Empty API_BASE = same-origin (e.g. Vercel). No throw.
+    const res = await apiFetch('/api/venues/order', {
+      method: 'PATCH',
+      body: JSON.stringify({ orderedIds }),
+    });
+    if (!res.ok && res.status !== 204) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || res.statusText);
+    }
+  },
 };

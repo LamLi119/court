@@ -1,51 +1,44 @@
+import mysql from 'mysql2/promise';
+import fs from 'fs';
 import path from 'path';
-import { getPool } from './lib/db.js';
-import { sanitizeRow, uploadToImgBB, setCorsHeaders } from './lib/helpers.js';
 
-function getApiFilePath(...segments) {
-  return path.join(process.cwd(), 'api', ...segments);
-}
-
-export const config = { api: { bodyParser: { sizeLimit: '2mb' } } };
+let pool;
 
 export default async function handler(req, res) {
-  setCorsHeaders(res, req);
-  if (req.method === 'OPTIONS') return res.status(200).end();
-
-  if (req.method !== 'GET' && req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (!pool) {
+    const certDir = path.join(process.cwd(), 'api');
+    
+    pool = mysql.createPool({
+      host: process.env.MYSQL_HOST,
+      user: process.env.MYSQL_USER,
+      password: process.env.MYSQL_PASSWORD,
+      database: process.env.MYSQL_DATABASE,
+      port: 3306,
+      ssl: {
+        // 確保你的 .pem 文件真的在 api/ 資料夾內並已 Git Push
+        ca: fs.readFileSync(path.join(certDir, 'server-ca.pem')),
+        cert: fs.readFileSync(path.join(certDir, 'client-cert.pem')),
+        key: fs.readFileSync(path.join(certDir, 'client-key.pem')),
+        rejectUnauthorized: false
+      },
+      waitForConnections: true,
+      connectionLimit: 1,
+      queueLimit: 0
+    });
   }
 
   try {
-    const pool = getPool();
+    const [rows] = await pool.execute('SELECT * FROM venues');
+    
+    const data = rows.map(row => ({
+      ...row,
+      images: typeof row.images === 'string' ? JSON.parse(row.images) : row.images,
+      coordinates: typeof row.coordinates === 'string' ? JSON.parse(row.coordinates) : row.coordinates
+    }));
 
-    if (req.method === 'GET') {
-      const [rows] = await pool.execute(
-        `SELECT * FROM venues ORDER BY sort_order IS NULL, sort_order ASC, name ASC`
-      );
-      return res.json(rows);
-    }
-
-    if (req.method === 'POST') {
-      const row = sanitizeRow(req.body);
-      if (row.images && Array.isArray(row.images)) {
-        const imageUrls = await Promise.all(
-          row.images.map((img) =>
-            typeof img === 'string' && img.startsWith('data:') ? uploadToImgBB(img) : img
-          )
-        );
-        row.images = JSON.stringify(imageUrls.filter((url) => url != null));
-      }
-      const keys = Object.keys(row);
-      const values = keys.map((k) => row[k]);
-      const placeholders = keys.map(() => '?').join(', ');
-      const cols = keys.map((k) => (k === 'sort_order' ? 'sort_order' : `\`${k}\``)).join(', ');
-      await pool.execute(`INSERT INTO venues (${cols}) VALUES (${placeholders})`, values);
-      const [result] = await pool.execute('SELECT * FROM venues WHERE id = LAST_INSERT_ID()');
-      return res.status(201).json(result[0]);
-    }
-  } catch (err) {
-    console.error('api/venues', err);
-    return res.status(500).json({ error: err.message || 'Server error' });
+    res.status(200).json(data);
+  } catch (error) {
+    console.error('Database Error:', error);
+    res.status(500).json({ error: error.message });
   }
 }

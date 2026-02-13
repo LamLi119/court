@@ -1,5 +1,10 @@
+import path from 'path';
 import { getPool } from './lib/db.js';
 import { sanitizeRow, uploadToImgBB, setCorsHeaders } from './lib/helpers.js';
+
+function getApiFilePath(...segments) {
+  return path.join(process.cwd(), 'api', ...segments);
+}
 
 export const config = { api: { bodyParser: { sizeLimit: '2mb' } } };
 

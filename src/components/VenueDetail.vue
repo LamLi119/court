@@ -275,11 +275,10 @@ const openSocialLink = (url: string) => {
               <h3 class="text-[11px] uppercase tracking-widest font-bold opacity-60">{{ t('pricing') }}</h3>
               <div
                 v-if="venue.pricing.type === 'text' && venue.pricing.content"
-                class="p-4 rounded-[12px] border text-[14px]"
+                class="p-4 rounded-[12px] border text-[14px] description-html"
                 :class="darkMode ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-gray-50 border-gray-200 text-gray-700'"
-              >
-                {{ venue.pricing.content }}
-              </div>
+                v-html="sanitizeDescription(venue.pricing.content)"
+              ></div>
               <button
                 v-else-if="venue.pricing.imageUrl"
                 type="button"
@@ -311,8 +310,8 @@ const openSocialLink = (url: string) => {
                 </div>
               </div>
             </template>
-            <!-- Mobile: social links, Book now (no fixed bar) -->
-            <div class="lg:hidden space-y-6 pt-4">
+            <!-- Mobile: social links – leave extra space above fixed bar -->
+            <div class="lg:hidden space-y-6 pt-4 pb-24">
               <template v-if="socialLinksList().length > 0">
                 <div class="space-y-2">
                   <h3 class="text-[11px] uppercase tracking-widest font-bold opacity-60">
@@ -387,7 +386,7 @@ const openSocialLink = (url: string) => {
 
     <!-- Mobile: fixed bar – Book now only -->
     <div
-      class="fixed bottom-16 left-0 right-0 z-50 p-4 border-t lg:hidden"
+      class="fixed bottom-0 left-0 right-0 z-50 p-4 border-t lg:hidden"
       :class="darkMode ? 'bg-gray-800/95 border-gray-700' : 'bg-white/95 border-gray-200'"
     >
       <div class="flex items-center justify-between gap-4 max-w-lg mx-auto">

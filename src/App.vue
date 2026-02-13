@@ -179,13 +179,13 @@ const clearFilters = () => {
 };
 
 const handleAdminLogin = () => {
-  if (adminPassword.value === 'admin') {
+  if (adminPassword.value === 'abc321A!') {
     isAdmin.value = true;
     showAdminLogin.value = false;
     adminPassword.value = '';
     currentTab.value = 'admin';
   } else {
-    alert('Incorrect password (Hint: admin)');
+    alert('Incorrect password');
   }
 };
 
@@ -703,14 +703,15 @@ const saveSortEdit = async () => {
       </div>
     </div>
 
-    <MobileNav
+    <!-- <MobileNav
       v-if="isMobile"
       :currentTab="currentTab"
       :setTab="(t: AppTab) => { currentTab = t; }"
       :t="t"
       :darkMode="darkMode"
       :isAdmin="isAdmin"
-    />
+      :onAdminClick="() => { if (isAdmin) currentTab = 'admin'; else { showAdminLogin = true; syncAdminUrl(true); } }"
+    /> -->
   </div>
 </template>
 

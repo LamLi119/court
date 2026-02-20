@@ -1,37 +1,10 @@
-import path from 'path';
-import fs from 'fs';
 import express from 'express';
-import mysql from 'mysql2/promise';
 import axios from 'axios';
 import FormData from 'form-data';
+import { getPool } from './lib/db.js';
 
 const app = express();
 app.use(express.json({ limit: '5mb' })); // Increased limit for Base64
-
-let pool;
-
-const getPool = () => {
-  if (!pool) {
-    // Vercel usually looks for certs in the /api directory relative to process.cwd()
-    const certDir = path.join(process.cwd(), 'api');
-    pool = mysql.createPool({
-      host: process.env.MYSQL_HOST,
-      port: parseInt(process.env.MYSQL_PORT || '3306', 10),
-      user: process.env.MYSQL_USER,
-      password: process.env.MYSQL_PASSWORD,
-      database: process.env.MYSQL_DATABASE,
-      waitForConnections: true,
-      connectionLimit: 1, // Crucial for Vercel
-      ssl: {
-        ca: fs.readFileSync(path.join(certDir, 'server-ca.pem')),
-        cert: fs.readFileSync(path.join(certDir, 'client-cert.pem')),
-        key: fs.readFileSync(path.join(certDir, 'client-key.pem')),
-        rejectUnauthorized: false
-      }
-    });
-  }
-  return pool;
-};
 
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
 

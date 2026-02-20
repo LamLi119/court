@@ -116,7 +116,7 @@ export const db = {
     const path = id ? `/api/venues/${id}` : '/api/venues';
     const res = await apiFetch(path, {
       method,
-      body: JSON.stringify(id ? (needsOrgIconClear ? { ...dataToSave, orgIcon: null } : dataToSave) : dataToSave),
+      body: JSON.stringify(dataToSave),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));

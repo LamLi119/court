@@ -4,7 +4,6 @@ import express from 'express';
 import mysql from 'mysql2/promise';
 import axios from 'axios';
 import FormData from 'form-data';
-import { processOrgIcon } from './lib/helpers.js';
 
 const app = express();
 app.use(express.json({ limit: '5mb' })); // Increased limit for Base64
@@ -107,8 +106,13 @@ app.post('/api/venues', async (req, res) => {
       row.images = JSON.stringify(imageUrls.filter(url => url !== null));
     }
 
-    if (row.orgIcon !== undefined) {
-      row.orgIcon = await processOrgIcon(row.orgIcon);
+    // 2. Process orgIcon: upload data URLs to ImgBB, cap length for DB
+    if (row.orgIcon != null && row.orgIcon !== '') {
+      if (row.orgIcon.startsWith('data:')) {
+        const uploadedUrl = await uploadToImgBB(row.orgIcon);
+        row.orgIcon = uploadedUrl || null;
+      }
+      if (row.orgIcon && row.orgIcon.length > 2048) row.orgIcon = row.orgIcon.slice(0, 2048);
     }
 
     if (row.coordinates) row.coordinates = JSON.stringify(row.coordinates);
@@ -139,7 +143,13 @@ app.put('/api/venues/:id', async (req, res) => {
         const imageUrls = await Promise.all(row.images.map(img => uploadToImgBB(img)));
         row.images = JSON.stringify(imageUrls.filter(u => u !== null));
       }
-      if (row.orgIcon !== undefined) row.orgIcon = await processOrgIcon(row.orgIcon);
+      if (row.orgIcon != null && row.orgIcon !== '') {
+        if (row.orgIcon.startsWith('data:')) {
+          const uploadedUrl = await uploadToImgBB(row.orgIcon);
+          row.orgIcon = uploadedUrl || null;
+        }
+        if (row.orgIcon && row.orgIcon.length > 2048) row.orgIcon = row.orgIcon.slice(0, 2048);
+      }
       if (row.coordinates) row.coordinates = JSON.stringify(row.coordinates);
 
       const keys = Object.keys(row);

@@ -85,7 +85,6 @@ export default async function handler(req, res) {
       // Handle Image Uploads to ImgBB first
       let imageUrls = [];
       if (data.images && Array.isArray(data.images)) {
-        console.log('Processing images...');
         imageUrls = await Promise.all(
           data.images.map(img => img.startsWith('data:') ? uploadToImgBB(img) : img)
         );
@@ -98,15 +97,15 @@ export default async function handler(req, res) {
       `;
 
       const values = [
-        data.name,
-        data.address,
-        data.type,
-        data.price,
-        data.rating || 0,
-        data.reviews || 0,
+        data.name || null,
+        data.address || null,
+        data.type || null,
+        data.price || null,
+        data.rating ?? 0,
+        data.reviews ?? 0,
         JSON.stringify(data.coordinates || {}),
         JSON.stringify(imageUrls),
-        data.description || ''
+        data.description || null
       ];
 
       // THE CRITICAL AWAIT: Ensuring DB saves before function ends

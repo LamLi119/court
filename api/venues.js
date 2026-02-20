@@ -128,16 +128,27 @@ app.post('/api/venues', async (req, res) => {
   }
 });
 
+// Make sure the ID is being parsed correctly
 app.delete('/api/venues/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
-    const [result] = await pool.execute('DELETE FROM venues WHERE id = ?', [id]);
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Not found' });
-    res.status(204).send();
+    const db = getPool();
+    const venueId = req.params.id; // This will be "35"
+
+    // If venueId is a string, MySQL usually handles it, 
+    // but let's be safe:
+    const [result] = await db.execute(
+      'DELETE FROM venues WHERE id = ?', 
+      [parseInt(venueId, 10)]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Venue not found" });
+    }
+
+    return res.status(204).end(); // 204 means Success, No Content
   } catch (err) {
-    console.error('DELETE /api/venues/:id', err);
-    res.status(500).json({ error: err.message || 'Failed to delete venue from Cloud SQL' });
+    console.error("DELETE CRASH:", err.message);
+    return res.status(500).json({ error: err.message });
   }
 });
 

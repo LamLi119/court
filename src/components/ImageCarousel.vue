@@ -1,23 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 
-const props = withDefaults(
-  defineProps<{
-    images: string[];
-    onImageClick?: (src: string) => void;
-    venueName?: string;
-    sportType?: string;
-  }>(),
-  { venueName: '', sportType: 'Court' }
-);
+const props = defineProps<{
+  images: string[];
+  onImageClick?: (src: string) => void;
+}>();
 
 const index = ref(0);
-
-const imageAlt = computed(() =>
-  props.venueName && props.sportType
-    ? `${props.venueName} ${props.sportType} area`
-    : 'Court photo'
-);
 </script>
 
 <template>
@@ -39,8 +28,7 @@ const imageAlt = computed(() =>
       <img
         :src="images[index]"
         class="w-full h-full object-cover transition-opacity duration-300 pointer-events-none"
-        :alt="index === 0 ? imageAlt : `${imageAlt} (${index + 1})`"
-        :fetchpriority="index === 0 ? 'high' : undefined"
+        :alt="`Court photo ${index + 1}`"
       />
 
       <template v-if="images.length > 1">

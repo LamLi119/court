@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { Venue, Language } from '../../types';
 import { getStationDisplayName } from '../utils/mtrStations';
-import { getVenueImageAlt } from '../utils/seo';
 
 const props = defineProps<{
   venue: Venue;
@@ -13,8 +11,6 @@ const props = defineProps<{
   onToggleSave: () => void;
   onViewDetails: () => void;
 }>();
-
-const imageAlt = computed(() => getVenueImageAlt(props.venue));
 </script>
 
 <template>
@@ -30,7 +26,7 @@ const imageAlt = computed(() => getVenueImageAlt(props.venue));
       <div class="w-20 h-20 rounded-[16px] overflow-hidden flex-shrink-0 bg-gray-200 dark:bg-gray-700">
         <img
           :src="venue.images[0] || '/placeholder.svg'"
-          :alt="imageAlt"
+          :alt="venue.name"
           class="w-full h-full object-cover"
           loading="lazy"
         />

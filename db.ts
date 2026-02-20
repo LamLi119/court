@@ -58,16 +58,6 @@ function rowToVenue(row: any): Venue {
     }
   }
 
-  let sport_types = row.sport_types;
-  if (typeof sport_types === 'string') {
-    try {
-      sport_types = JSON.parse(sport_types);
-    } catch {
-      sport_types = undefined;
-    }
-  }
-  if (!Array.isArray(sport_types)) sport_types = undefined;
-
   const { orgIcon, ...rest } = row;
   return {
     ...rest,
@@ -76,7 +66,6 @@ function rowToVenue(row: any): Venue {
     pricing: pricing,
     amenities: Array.isArray(amenities) ? amenities : [],
     org_icon: orgIcon ?? null,
-    sport_types,
   } as Venue;
 }
 

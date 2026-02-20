@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
 import type { Language, AppTab } from '../../types';
 import logoUrl from '../assets/green-G.svg';
-
-const router = useRouter();
 
 const props = defineProps<{
   language: Language;
@@ -63,13 +60,6 @@ const openFindEvents = () => {
           >
             SAVED
           </button>
-          <a
-            href="/search/pickleball"
-            class="hidden md:block text-[14px] font-[700] transition-all text-gray-400 hover:text-gray-600"
-            @click.prevent="router.push('/search/pickleball'); setTab('explore');"
-          >
-            PICKLEBALL
-          </a>
         </nav>
       </div>
 

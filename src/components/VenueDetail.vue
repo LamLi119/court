@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import type { Venue, Language } from '../../types';
 import { getStationDisplayName } from '../utils/mtrStations';
+import { applyVenueSeo, resetSeoToDefault, getSportTypeLabel, getVenueImageAlt } from '../utils/seo';
 import ImageCarousel from './ImageCarousel.vue';
 
 const ALLOWED_TAGS = new Set([
@@ -140,6 +141,20 @@ const socialLinksList = () => parseSocialLinks(props.venue.socialLink);
 const openSocialLink = (url: string) => {
   if (url) window.open(url, '_blank');
 };
+
+const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+onMounted(() => {
+  applyVenueSeo(props.venue, baseUrl);
+});
+watch(() => props.venue, (v) => {
+  if (v) applyVenueSeo(v, baseUrl);
+}, { immediate: true });
+onUnmounted(() => {
+  resetSeoToDefault();
+});
+
+const venueImageAlt = computed(() => getVenueImageAlt(props.venue));
 </script>
 
 <template>
@@ -212,7 +227,8 @@ const openSocialLink = (url: string) => {
           v-if="venue.org_icon"
           :src="venue.org_icon"
           class="w-8 h-8 rounded-lg flex-shrink-0 object-cover"
-          alt=""
+          :alt="venueImageAlt"
+          fetchpriority="high"
         />
         <span class="truncate">{{ venue.name }}</span>
       </h1>
@@ -237,7 +253,7 @@ const openSocialLink = (url: string) => {
     <div class="container mx-auto px-4 py-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="lg:col-span-2 space-y-8">
-          <ImageCarousel :images="venue.images" :on-image-click="openFullscreen" />
+          <ImageCarousel :images="venue.images" :venue-name="venue.name" :sport-type="getSportTypeLabel(venue)" :on-image-click="openFullscreen" />
           <div class="space-y-6">
             <h2
               class="text-[24px] md:text-[32px] font-[900] tracking-tight flex items-center gap-3"
@@ -247,7 +263,7 @@ const openSocialLink = (url: string) => {
                 v-if="venue.org_icon"
                 :src="venue.org_icon"
                 class="w-12 h-12 md:w-14 md:h-14 rounded-xl flex-shrink-0 object-cover"
-                alt=""
+                :alt="venueImageAlt"
               />
               <span>{{ venue.name }}</span>
             </h2>

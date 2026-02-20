@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import type { Venue, Language } from '../../types';
 import { getStationDisplayName } from '../utils/mtrStations';
+import { getVenueImageAlt } from '../utils/seo';
 
 const props = defineProps<{
   venue: Venue;
@@ -16,6 +17,7 @@ const props = defineProps<{
 }>();
 
 const isExpanded = ref(false);
+const imageAlt = computed(() => getVenueImageAlt(props.venue));
 
 const toggleExpand = (e: MouseEvent) => {
   e.stopPropagation();
@@ -107,7 +109,7 @@ const toggleExpand = (e: MouseEvent) => {
       <div class="relative h-44 overflow-hidden">
       <img
         :src="venue.images[0] || '/placeholder.svg'"
-        :alt="venue.name"
+        :alt="imageAlt"
         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
         loading="lazy"
       />

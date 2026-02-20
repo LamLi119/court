@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import type { Venue, Language, AppTab } from '../types';
 import { translate } from './utils/translations';
 import { getStationCanonicalEn } from './utils/mtrStations';
+import { slugify } from './utils/slugify';
+import { resetSeoToDefault } from './utils/seo';
+import { useVenueSlug } from './router';
 import { db } from '../db';
 import Header from './components/Header.vue';
 import AdminLogin from './components/AdminLogin.vue';
@@ -11,6 +15,9 @@ import MobileView from './components/MobileView.vue';
 import MobileNav from './components/MobileNav.vue';
 import VenueDetail from './components/VenueDetail.vue';
 import VenueForm from './components/VenueForm.vue';
+
+const route = useRoute();
+const router = useRouter();
 
 const language = ref<Language>('en');
 const currentTab = ref<AppTab>('explore');
@@ -31,6 +38,7 @@ const showDesktopDetail = ref(false);
 const searchQuery = ref('');
 const mtrFilter = ref<string[]>([]);
 const distanceFilter = ref('');
+const sportFilter = ref(''); // SEO: /search/:sport category page
 const darkMode = ref(localStorage.getItem('pickleball_darkmode') === 'true');
 const isMobile = ref(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
 
@@ -103,18 +111,57 @@ const handleResize = () => {
 const ADMIN_PATH = '/admin';
 
 function isAdminPath(): boolean {
-  const path = window.location.pathname;
-  return path === ADMIN_PATH || path.endsWith('/admin');
+  return route.path === ADMIN_PATH || route.path.endsWith('/admin');
 }
 
 function syncAdminUrl(show: boolean) {
-  const base = typeof import.meta.env?.BASE_URL === 'string' ? import.meta.env.BASE_URL : '/';
-  const targetPath = show ? (base.replace(/\/$/, '') + ADMIN_PATH) : base.replace(/\/$/, '') || '/';
-  if (window.location.pathname !== targetPath) {
-    if (show) history.pushState({}, '', targetPath);
-    else history.replaceState({}, '', targetPath);
-  }
+  if (show) router.push(ADMIN_PATH);
+  else router.push('/');
 }
+
+function resolveVenueBySlug(slug: string): Venue | null {
+  const s = (slug || '').toLowerCase().trim();
+  if (!s) return null;
+  return venues.value.find((v) => slugify(v.name) === s) ?? null;
+}
+
+watch(
+  () => ({ name: route.name, slug: route.params.slug, sport: route.params.sport }),
+  (params, prev) => {
+    if (route.name === 'venue' && typeof route.params.slug === 'string') {
+      const venue = resolveVenueBySlug(route.params.slug);
+      selectedVenue.value = venue;
+      showDesktopDetail.value = !!venue;
+      if (!venue && venues.value.length > 0) router.replace('/');
+    } else if (route.name === 'search' && typeof route.params.sport === 'string') {
+      sportFilter.value = route.params.sport;
+      selectedVenue.value = null;
+      showDesktopDetail.value = false;
+      applySearchPageSeo(route.params.sport);
+    } else if (route.name === 'home' || route.name === 'admin') {
+      if (route.name === 'home') {
+        sportFilter.value = '';
+        if (prev?.name === 'venue') resetSeoToDefault();
+        selectedVenue.value = null;
+        showDesktopDetail.value = false;
+      }
+    }
+  },
+  { immediate: true }
+);
+
+watch(
+  () => venues.value.length,
+  () => {
+    if (route.name === 'venue' && typeof route.params.slug === 'string' && !selectedVenue.value) {
+      const venue = resolveVenueBySlug(route.params.slug);
+      if (venue) {
+        selectedVenue.value = venue;
+        showDesktopDetail.value = true;
+      }
+    }
+  }
+);
 
 onMounted(() => {
   if (isAdminPath()) showAdminLogin.value = true;
@@ -200,6 +247,8 @@ const filteredVenues = computed(() => {
       ? new Set(mtrFilter.value.map((s) => getStationCanonicalEn(s)).filter(Boolean))
       : null;
 
+  const sport = (sportFilter.value || '').toLowerCase().trim();
+
   return source.filter(venue => {
     const query = (searchQuery.value || '').toLowerCase();
     const name = ((venue as any).name ?? '').toString().toLowerCase();
@@ -213,7 +262,14 @@ const filteredVenues = computed(() => {
     const wd = typeof wdRaw === 'number' ? wdRaw : parseFloat((wdRaw ?? '').toString());
     const distanceLimit = distanceFilter.value ? parseInt(distanceFilter.value) : NaN;
     const distanceMatch = !distanceFilter.value || (Number.isFinite(wd) && wd <= distanceLimit);
-    return nameMatch && mtrMatch && distanceMatch;
+    let sportMatch = true;
+    if (sport) {
+      const types = (venue as Venue).sport_types;
+      const hasSportType = Array.isArray(types) && types.some((t: string) => String(t).toLowerCase() === sport);
+      const desc = ((venue as any).description ?? '').toString().toLowerCase();
+      sportMatch = hasSportType || name.includes(sport) || desc.includes(sport);
+    }
+    return nameMatch && mtrMatch && distanceMatch && sportMatch;
   });
 });
 
@@ -397,7 +453,8 @@ const saveSortEdit = async () => {
       :setTab="(tab: AppTab) => {
         if (tab === 'admin' && !isAdmin) showAdminLogin = true;
         else currentTab = tab;
-        selectedVenue = null; showDesktopDetail = false;
+        if (tab === 'explore') { router.push('/'); resetSeoToDefault(); selectedVenue = null; showDesktopDetail = false; }
+        else { selectedVenue = null; showDesktopDetail = false; }
       }"
       :viewMode="mobileViewMode"
       :setViewMode="(mode: 'map' | 'list') => { mobileViewMode = mode; }"
@@ -583,12 +640,15 @@ const saveSortEdit = async () => {
           :onEditVenue="(id: number, v: any) => { editingVenue = v; showVenueForm = true; }"
           :availableStations="availableStations"
           :onClearFilters="clearFilters"
+          :onOpenDetail="() => { if (selectedVenue) router.push('/venues/' + useVenueSlug(selectedVenue)); }"
+          :onBackFromDetail="() => { resetSeoToDefault(); router.push('/'); }"
+          :force-show-detail="route.name === 'venue' && !!selectedVenue"
         />
 
         <VenueDetail
           v-else-if="showDesktopDetail && selectedVenue"
           :venue="selectedVenue"
-          :onBack="() => { showDesktopDetail = false; }"
+          :onBack="() => { resetSeoToDefault(); selectedVenue = null; showDesktopDetail = false; router.push('/'); }"
           :language="language"
           :t="t"
           :darkMode="darkMode"
@@ -603,7 +663,7 @@ const saveSortEdit = async () => {
           :venues="filteredVenues"
           :selectedVenue="selectedVenue"
           :onSelectVenue="(v: Venue | null) => { selectedVenue = v; }"
-          :onViewDetail="(v: Venue) => { selectedVenue = v; showDesktopDetail = true; }"
+          :onViewDetail="(v: Venue) => { selectedVenue = v; showDesktopDetail = true; router.push('/venues/' + useVenueSlug(v)); }"
           :searchQuery="searchQuery"
           :setSearchQuery="(s: string) => { searchQuery = s; }"
           :mtrFilter="mtrFilter"

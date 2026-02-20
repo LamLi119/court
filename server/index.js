@@ -135,27 +135,29 @@ app.get('/api/venues/:id', async (req, res) => {
 app.post('/api/venues', async (req, res) => {
   try {
     const row = sanitizeRow(req.body);
-    // If images are Base64 strings, upload to ImgBB and replace with URLs
+
     if (row.images && Array.isArray(row.images)) {
       console.log('正在處理圖片上傳至 ImgBB...');
       const imageUrls = await Promise.all(
-        row.images.map((img) => (typeof img === 'string' && img.startsWith('data:')) ? uploadToImgBB(img) : img)
+        row.images.map(img => img.startsWith('data:') ? uploadToImgBB(img) : img)
       );
-      row.images = JSON.stringify(imageUrls.filter((url) => url != null));
+      row.images = JSON.stringify(imageUrls.filter(url => url !== null));
     }
+
+    console.log('圖片處理完成，準備寫入資料庫...');
     const keys = Object.keys(row);
     const values = keys.map((k) => row[k]);
     const placeholders = keys.map(() => '?').join(', ');
-    const cols = keys.map((k) => (k === 'sort_order' ? 'sort_order' : `\`${k}\``)).join(', ');
-    await pool.execute(
-      `INSERT INTO venues (${cols}) VALUES (${placeholders})`,
+
+    const [result] = await pool.execute(
+      `INSERT INTO venues (${keys.join(', ')}) VALUES (${placeholders})`,
       values
     );
-    const [result] = await pool.execute('SELECT * FROM venues WHERE id = LAST_INSERT_ID()');
-    res.status(201).json(result[0]);
+
+    res.status(201).json({ id: result.insertId, ...row });
   } catch (err) {
-    console.error('POST /api/venues', err);
-    res.status(500).json({ error: err.message || 'Failed to create venue in Cloud SQL' });
+    console.error('POST /api/venues Error:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 

@@ -23,7 +23,10 @@ export default async function handler(req, res) {
       },
       waitForConnections: true,
       connectionLimit: 1,
-      queueLimit: 0
+      queueLimit: 0,
+      enableKeepAlive: true, 
+      keepAliveInitialDelay: 10000,
+      idleTimeout: 30000,
     });
   }
 

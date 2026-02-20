@@ -129,26 +129,15 @@ app.post('/api/venues', async (req, res) => {
 });
 
 app.delete('/api/venues/:id', async (req, res) => {
-  const { id } = req.params;
-  console.log("Attempting to delete ID:", id);
-
-  if (!id || id === 'undefined') {
-    return res.status(400).json({ error: "Invalid ID" });
-  }
-
   try {
-    const db = getPool();
-    // We use [id] to safely inject the parameter
-    const [result] = await db.execute('DELETE FROM venues WHERE id = ?', [id]);
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Venue not found" });
-    }
-
-    return res.status(204).send();
+    const id = parseInt(req.params.id, 10);
+    if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
+    const [result] = await pool.execute('DELETE FROM venues WHERE id = ?', [id]);
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Not found' });
+    res.status(204).send();
   } catch (err) {
-    console.error("DELETE ERROR:", err.message);
-    return res.status(500).json({ error: err.message });
+    console.error('DELETE /api/venues/:id', err);
+    res.status(500).json({ error: err.message || 'Failed to delete venue from Cloud SQL' });
   }
 });
 

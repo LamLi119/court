@@ -4,20 +4,17 @@ import express from 'express';
 import mysql from 'mysql2/promise';
 import axios from 'axios';
 import FormData from 'form-data';
+import { processOrgIcon } from './lib/helpers.js';
 
-// --- INITIALIZATION ---
 const app = express();
-app.use(express.json({ limit: '5mb' })); // Increased limit for image handling
+app.use(express.json({ limit: '5mb' })); // Increased limit for Base64
 
-// Global pool variable to persist across serverless "warm" starts
 let pool;
 
 const getPool = () => {
   if (!pool) {
-    // On Vercel, files are usually in the root or a specific folder. 
-    // Assuming .pem files are in /api/
+    // Vercel usually looks for certs in the /api directory relative to process.cwd()
     const certDir = path.join(process.cwd(), 'api');
-    
     pool = mysql.createPool({
       host: process.env.MYSQL_HOST,
       port: parseInt(process.env.MYSQL_PORT || '3306', 10),
@@ -25,8 +22,7 @@ const getPool = () => {
       password: process.env.MYSQL_PASSWORD,
       database: process.env.MYSQL_DATABASE,
       waitForConnections: true,
-      connectionLimit: 1, // Crucial for Vercel: 1 connection per instance
-      queueLimit: 0,
+      connectionLimit: 1, // Crucial for Vercel
       ssl: {
         ca: fs.readFileSync(path.join(certDir, 'server-ca.pem')),
         cert: fs.readFileSync(path.join(certDir, 'client-cert.pem')),
@@ -40,9 +36,9 @@ const getPool = () => {
 
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
 
-// --- HELPERS ---
+/** Helper: Upload to ImgBB */
 async function uploadToImgBB(base64String) {
-  if (!IMGBB_API_KEY) return null;
+  if (!IMGBB_API_KEY || !base64String || !base64String.startsWith('data:')) return base64String;
   try {
     const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
     const formData = new FormData();
@@ -54,7 +50,7 @@ async function uploadToImgBB(base64String) {
     );
     return response.data.data?.url ?? null;
   } catch (err) {
-    console.error('ImgBB Error:', err.message);
+    console.error('ImgBB Upload Error:', err.message);
     return null;
   }
 }
@@ -67,15 +63,15 @@ function sanitizeRow(body) {
   ]);
   const row = {};
   for (const [k, v] of Object.entries(body || {})) {
-    // Critical Fix: Change undefined to null for MySQL compatibility
     if (allowed.has(k)) {
+        // Map undefined to null for SQL compatibility
         row[k] = (v === undefined) ? null : v;
     }
   }
   return row;
 }
 
-// --- CORS (Serverless Style) ---
+// --- CORS ---
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -103,14 +99,18 @@ app.post('/api/venues', async (req, res) => {
     const db = getPool();
     const row = sanitizeRow(req.body);
 
+    // 1. Process Main Images
     if (row.images && Array.isArray(row.images)) {
       const imageUrls = await Promise.all(
-        row.images.map(img => img.startsWith('data:') ? uploadToImgBB(img) : img)
+        row.images.map(img => uploadToImgBB(img))
       );
       row.images = JSON.stringify(imageUrls.filter(url => url !== null));
     }
-    
-    // Ensure coordinates is a string
+
+    if (row.orgIcon !== undefined) {
+      row.orgIcon = await processOrgIcon(row.orgIcon);
+    }
+
     if (row.coordinates) row.coordinates = JSON.stringify(row.coordinates);
 
     const keys = Object.keys(row);
@@ -118,39 +118,50 @@ app.post('/api/venues', async (req, res) => {
     const placeholders = keys.map(() => '?').join(', ');
 
     const [result] = await db.execute(
-      `INSERT INTO venues (${keys.join(', ')}) VALUES (${placeholders})`,
+      `INSERT INTO venues (${keys.map(k => `\`${k}\``).join(', ')}) VALUES (${placeholders})`,
       values
     );
 
     res.status(201).json({ id: result.insertId, ...row });
   } catch (err) {
+    console.error('POST Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Make sure the ID is being parsed correctly
+app.put('/api/venues/:id', async (req, res) => {
+    try {
+      const db = getPool();
+      const id = parseInt(req.params.id, 10);
+      const row = sanitizeRow(req.body);
+
+      if (row.images && Array.isArray(row.images)) {
+        const imageUrls = await Promise.all(row.images.map(img => uploadToImgBB(img)));
+        row.images = JSON.stringify(imageUrls.filter(u => u !== null));
+      }
+      if (row.orgIcon !== undefined) row.orgIcon = await processOrgIcon(row.orgIcon);
+      if (row.coordinates) row.coordinates = JSON.stringify(row.coordinates);
+
+      const keys = Object.keys(row);
+      const setClause = keys.map((k) => `\`${k}\` = ?`).join(', ');
+      const values = [...Object.values(row), id];
+
+      await db.execute(`UPDATE venues SET ${setClause} WHERE id = ?`, values);
+      res.json({ id, ...row });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+});
+
 app.delete('/api/venues/:id', async (req, res) => {
   try {
     const db = getPool();
-    const venueId = req.params.id; // This will be "35"
-
-    // If venueId is a string, MySQL usually handles it, 
-    // but let's be safe:
-    const [result] = await db.execute(
-      'DELETE FROM venues WHERE id = ?', 
-      [parseInt(venueId, 10)]
-    );
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Venue not found" });
-    }
-
-    return res.status(204).end(); // 204 means Success, No Content
+    const id = req.params.id;
+    await db.execute('DELETE FROM venues WHERE id = ?', [id]);
+    res.status(204).send();
   } catch (err) {
-    console.error("DELETE CRASH:", err.message);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
-// IMPORTANT: Export for Vercel
 export default app;

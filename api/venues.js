@@ -128,15 +128,32 @@ app.post('/api/venues', async (req, res) => {
   }
 });
 
-app.delete('/api/venues/:id', async (req, res) => {
+app.delete('/api/venues/:id?', async (req, res) => {
   try {
     const db = getPool();
-    const id = parseInt(req.params.id, 10);
-    if (Number.isNaN(id)) return res.status(400).json({ error: 'Invalid id' });
-    
+    // Try to get ID from path OR from query string (?id=...)
+    let idStr = req.params.id || req.query.id;
+
+    console.log('Attempting to delete ID:', idStr);
+
+    if (!idStr || idStr === 'undefined') {
+      return res.status(400).json({ error: 'ID is required and cannot be undefined' });
+    }
+
+    const id = parseInt(idStr, 10);
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ error: 'Invalid ID format' });
+    }
+
     const [result] = await db.execute('DELETE FROM venues WHERE id = ?', [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Venue not found in database' });
+    }
+
     res.status(204).send();
   } catch (err) {
+    console.error('DELETE Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

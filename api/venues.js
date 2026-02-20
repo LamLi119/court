@@ -1,44 +1,150 @@
-import mysql from 'mysql2/promise';
-import fs from 'fs';
-import path from 'path';
+import express from 'express';
+import axios from 'axios';
+import FormData from 'form-data';
+import { getPool } from './lib/db.js';
 
-let pool;
+const app = express();
+app.use(express.json({ limit: '5mb' })); // Increased limit for Base64
 
-export default async function handler(req, res) {
-  if (!pool) {
-    const certDir = path.join(process.cwd(), 'api');
-    
-    pool = mysql.createPool({
-      host: process.env.MYSQL_HOST,
-      user: process.env.MYSQL_USER,
-      password: process.env.MYSQL_PASSWORD,
-      database: process.env.MYSQL_DATABASE,
-      port: 3306,
-      ssl: {
-        // 確保你的 .pem 文件真的在 api/ 資料夾內並已 Git Push
-        ca: fs.readFileSync(path.join(certDir, 'server-ca.pem')),
-        cert: fs.readFileSync(path.join(certDir, 'client-cert.pem')),
-        key: fs.readFileSync(path.join(certDir, 'client-key.pem')),
-        rejectUnauthorized: false
-      },
-      waitForConnections: true,
-      connectionLimit: 1,
-      queueLimit: 0
-    });
-  }
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
 
+/** Helper: Upload to ImgBB */
+async function uploadToImgBB(base64String) {
+  if (!IMGBB_API_KEY || !base64String || !base64String.startsWith('data:')) return base64String;
   try {
-    const [rows] = await pool.execute('SELECT * FROM venues');
-    
-    const data = rows.map(row => ({
-      ...row,
-      images: typeof row.images === 'string' ? JSON.parse(row.images) : row.images,
-      coordinates: typeof row.coordinates === 'string' ? JSON.parse(row.coordinates) : row.coordinates
-    }));
-
-    res.status(200).json(data);
-  } catch (error) {
-    console.error('Database Error:', error);
-    res.status(500).json({ error: error.message });
+    const base64Data = base64String.replace(/^data:image\/\w+;base64,/, '');
+    const formData = new FormData();
+    formData.append('image', base64Data);
+    const response = await axios.post(
+      `https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`,
+      formData,
+      { headers: formData.getHeaders() }
+    );
+    return response.data.data?.url ?? null;
+  } catch (err) {
+    console.error('ImgBB Upload Error:', err.message);
+    return null;
   }
 }
+
+function sanitizeRow(body) {
+  const allowed = new Set([
+    'name', 'description', 'mtrStation', 'mtrExit', 'walkingDistance', 'address',
+    'ceilingHeight', 'startingPrice', 'pricing', 'images', 'amenities', 'whatsapp',
+    'socialLink', 'orgIcon', 'coordinates', 'sort_order',
+  ]);
+  const row = {};
+  for (const [k, v] of Object.entries(body || {})) {
+    if (allowed.has(k)) {
+        // Map undefined to null for SQL compatibility
+        row[k] = (v === undefined) ? null : v;
+    }
+  }
+  return row;
+}
+
+// --- CORS ---
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  next();
+});
+
+// --- ROUTES ---
+
+app.get('/api/venues', async (req, res) => {
+  try {
+    const db = getPool();
+    const [rows] = await db.execute(
+      `SELECT * FROM venues ORDER BY sort_order IS NULL, sort_order ASC, name ASC`
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/venues', async (req, res) => {
+  try {
+    const db = getPool();
+    const row = sanitizeRow(req.body);
+
+    // 1. Process Main Images
+    if (row.images && Array.isArray(row.images)) {
+      const imageUrls = await Promise.all(
+        row.images.map(img => uploadToImgBB(img))
+      );
+      row.images = JSON.stringify(imageUrls.filter(url => url !== null));
+    }
+
+    // 2. Process orgIcon: upload data URLs to ImgBB, cap length for DB
+    if (row.orgIcon != null && row.orgIcon !== '') {
+      if (row.orgIcon.startsWith('data:')) {
+        const uploadedUrl = await uploadToImgBB(row.orgIcon);
+        row.orgIcon = uploadedUrl || null;
+      }
+      if (row.orgIcon && row.orgIcon.length > 2048) row.orgIcon = row.orgIcon.slice(0, 2048);
+    }
+
+    if (row.coordinates) row.coordinates = JSON.stringify(row.coordinates);
+
+    const keys = Object.keys(row);
+    const values = keys.map((k) => row[k]);
+    const placeholders = keys.map(() => '?').join(', ');
+
+    const [result] = await db.execute(
+      `INSERT INTO venues (${keys.map(k => `\`${k}\``).join(', ')}) VALUES (${placeholders})`,
+      values
+    );
+
+    res.status(201).json({ id: result.insertId, ...row });
+  } catch (err) {
+    console.error('POST Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/venues/:id', async (req, res) => {
+    try {
+      const db = getPool();
+      const id = parseInt(req.params.id, 10);
+      const row = sanitizeRow(req.body);
+
+      if (row.images && Array.isArray(row.images)) {
+        const imageUrls = await Promise.all(row.images.map(img => uploadToImgBB(img)));
+        row.images = JSON.stringify(imageUrls.filter(u => u !== null));
+      }
+      if (row.orgIcon != null && row.orgIcon !== '') {
+        if (row.orgIcon.startsWith('data:')) {
+          const uploadedUrl = await uploadToImgBB(row.orgIcon);
+          row.orgIcon = uploadedUrl || null;
+        }
+        if (row.orgIcon && row.orgIcon.length > 2048) row.orgIcon = row.orgIcon.slice(0, 2048);
+      }
+      if (row.coordinates) row.coordinates = JSON.stringify(row.coordinates);
+
+      const keys = Object.keys(row);
+      const setClause = keys.map((k) => `\`${k}\` = ?`).join(', ');
+      const values = [...Object.values(row), id];
+
+      await db.execute(`UPDATE venues SET ${setClause} WHERE id = ?`, values);
+      res.json({ id, ...row });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/venues/:id', async (req, res) => {
+  try {
+    const db = getPool();
+    const id = req.params.id;
+    await db.execute('DELETE FROM venues WHERE id = ?', [id]);
+    res.status(204).send();
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+export default app;

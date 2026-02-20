@@ -3,6 +3,9 @@ import FormData from 'form-data';
 
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
 
+/** Max length for orgIcon in DB (avoid "Data too long"). Use VARCHAR(2048) or TEXT. */
+const ORG_ICON_MAX_LENGTH = 2048;
+
 export function sanitizeRow(body) {
   const allowed = new Set([
     'name', 'description', 'mtrStation', 'mtrExit', 'walkingDistance', 'address',
@@ -32,6 +35,19 @@ export async function uploadToImgBB(base64String) {
     console.error('ImgBB Upload Error:', err.response?.data || err.message);
     return null;
   }
+}
+
+/** Ensure orgIcon value fits DB column: upload data URLs to ImgBB, cap URL length. */
+export async function processOrgIcon(value) {
+  if (value == null || value === '') return null;
+  if (typeof value !== 'string') return null;
+  let result = value;
+  if (value.startsWith('data:')) {
+    result = await uploadToImgBB(value);
+    if (!result) return null;
+  }
+  if (result.length > ORG_ICON_MAX_LENGTH) result = result.slice(0, ORG_ICON_MAX_LENGTH);
+  return result;
 }
 
 export function setCorsHeaders(res, req) {

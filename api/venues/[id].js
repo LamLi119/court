@@ -1,5 +1,5 @@
 import { getPool } from '../lib/db.js';
-import { sanitizeRow, setCorsHeaders } from '../lib/helpers.js';
+import { sanitizeRow, setCorsHeaders, processOrgIcon } from '../lib/helpers.js';
 
 export const config = { api: { bodyParser: { sizeLimit: '2mb' } } };
 
@@ -25,11 +25,17 @@ export default async function handler(req, res) {
 
     if (req.method === 'PUT') {
       const row = sanitizeRow(req.body);
+      if (row.orgIcon !== undefined) {
+        row.orgIcon = await processOrgIcon(row.orgIcon);
+      }
       const keys = Object.keys(row);
       if (keys.length === 0) {
         const [rows] = await pool.execute('SELECT * FROM venues WHERE id = ?', [id]);
         if (Array.isArray(rows) && rows.length === 0) return res.status(404).json({ error: 'Not found' });
         return res.json(rows[0]);
+      }
+      if (row.coordinates && typeof row.coordinates === 'object') {
+        row.coordinates = JSON.stringify(row.coordinates);
       }
       const setClause = keys.map((k) => (k === 'sort_order' ? 'sort_order' : `\`${k}\``) + ' = ?').join(', ');
       const values = [...Object.values(row), id];

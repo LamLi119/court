@@ -128,32 +128,20 @@ app.post('/api/venues', async (req, res) => {
   }
 });
 
-app.delete('/api/venues/:id?', async (req, res) => {
+app.delete('/api/venues/:id', async (req, res) => {
   try {
-    const db = getPool();
-    // Try to get ID from path OR from query string (?id=...)
-    let idStr = req.params.id || req.query.id;
+    const db = getPool(); // Ensure this is inside the try block
+    const id = req.params.id;
 
-    console.log('Attempting to delete ID:', idStr);
+    console.log('Attempting to delete ID:', id);
 
-    if (!idStr || idStr === 'undefined') {
-      return res.status(400).json({ error: 'ID is required and cannot be undefined' });
-    }
-
-    const id = parseInt(idStr, 10);
-    if (Number.isNaN(id)) {
-      return res.status(400).json({ error: 'Invalid ID format' });
-    }
-
+    // Use a basic query first to test
     const [result] = await db.execute('DELETE FROM venues WHERE id = ?', [id]);
     
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Venue not found in database' });
-    }
-
-    res.status(204).send();
+    console.log('Delete result:', result);
+    res.status(204).send(); 
   } catch (err) {
-    console.error('DELETE Error:', err.message);
+    console.error('DELETE Error Log:', err.message); // This shows up in Vercel Logs
     res.status(500).json({ error: err.message });
   }
 });

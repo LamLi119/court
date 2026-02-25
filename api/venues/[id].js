@@ -20,7 +20,20 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const [rows] = await pool.execute('SELECT * FROM venues WHERE id = ?', [id]);
       if (rows.length === 0) return res.status(404).send();
-      return res.json(rows[0]);
+      const venue = rows[0];
+      try {
+        let vsRows;
+        try {
+          [vsRows] = await pool.execute('SELECT vs.sport_id, vs.sort_order, s.name, s.name_zh, s.slug FROM venue_sports vs JOIN sports s ON s.id = vs.sport_id WHERE vs.venue_id = ? ORDER BY vs.sort_order', [id]);
+        } catch (_) {
+          const [r] = await pool.execute('SELECT vs.sport_id, vs.sort_order, s.name, s.slug FROM venue_sports vs JOIN sports s ON s.id = vs.sport_id WHERE vs.venue_id = ? ORDER BY vs.sort_order', [id]).catch(() => [[]]);
+          vsRows = (r || []).map((row) => ({ ...row, name_zh: null }));
+        }
+        venue.sport_data = (vsRows || []).map((r) => ({ sport_id: r.sport_id, name: r.name, name_zh: r.name_zh ?? null, slug: r.slug, sort_order: r.sort_order }));
+      } catch (_) {
+        venue.sport_data = [];
+      }
+      return res.json(venue);
     }
 
     if (req.method === 'PUT') {
@@ -41,8 +54,20 @@ export default async function handler(req, res) {
       const values = [...Object.values(row), id];
       const [result] = await pool.execute(`UPDATE venues SET ${setClause} WHERE id = ?`, values);
       if (result.affectedRows === 0) return res.status(404).json({ error: 'Not found' });
+      const sportData = req.body?.sport_data;
+      if (Array.isArray(sportData)) {
+        try {
+          await pool.execute('DELETE FROM venue_sports WHERE venue_id = ?', [id]);
+          for (let i = 0; i < sportData.length; i++) {
+            const sid = sportData[i]?.sport_id;
+            if (sid != null) await pool.execute('INSERT INTO venue_sports (venue_id, sport_id, sort_order) VALUES (?, ?, ?)', [id, sid, sportData[i].sort_order ?? i]);
+          }
+        } catch (_) {}
+      }
       const [rows] = await pool.execute('SELECT * FROM venues WHERE id = ?', [id]);
-      return res.json(rows[0]);
+      const out = rows[0];
+      if (Array.isArray(sportData)) out.sport_data = sportData;
+      return res.json(out);
     }
 
     if (req.method === 'DELETE') {

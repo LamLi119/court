@@ -1,3 +1,17 @@
+export interface Sport {
+  id: number;
+  name: string;
+  name_zh?: string | null;
+  slug: string;
+}
+
+export interface VenueSport {
+  sport_id: number;
+  name?: string;
+  name_zh?: string | null;
+  slug?: string;
+  sort_order: number;
+}
 
 export interface Pricing {
   type: 'text' | 'image';
@@ -8,7 +22,7 @@ export interface Pricing {
 export interface Venue {
   id: number;
   name: string;
-  description: string; // New field
+  description: string;
   mtrStation: string;
   mtrExit: string;
   walkingDistance: number;
@@ -22,6 +36,12 @@ export interface Venue {
   socialLink?: string;
   org_icon?: string;
   sort_order?: number;
+  /** For SEO: e.g. ["Pickleball", "Baseball"]. Derived from sport_data or legacy. */
+  sport_types?: string[];
+  /** Per-sport sort order: slug -> position (for admin). */
+  sport_orders?: Record<string, number>;
+  /** From API: list of sports this venue supports with sort_order per sport. */
+  sport_data?: VenueSport[];
   coordinates: {
     lat: number;
     lng: number;

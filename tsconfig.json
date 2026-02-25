@@ -1,4 +1,6 @@
 {
+  "include": ["src", "api", "*.ts", "*.vue"],
+  "exclude": ["node_modules", "dist", "server"],
   "compilerOptions": {
     "target": "ES2022",
     "experimentalDecorators": true,

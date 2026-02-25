@@ -1,6 +1,6 @@
 // Database: Google Cloud SQL via backend API (see server/ and CLOUD_SQL_SETUP.md).
 // Set VITE_API_URL in .env to your backend URL (e.g. http://localhost:3001).
-import { Venue } from './types';
+import type { Venue, Sport } from './types';
 
 // Empty = same-origin (e.g. Vercel: frontend and /api/* on same domain). Set for local dev or external API.
 const API_BASE = import.meta.env.VITE_API_URL ?? '';
@@ -58,7 +58,36 @@ function rowToVenue(row: any): Venue {
     }
   }
 
-  const { orgIcon, ...rest } = row;
+  let sport_types = row.sport_types;
+  if (typeof sport_types === 'string') {
+    try {
+      sport_types = JSON.parse(sport_types);
+    } catch {
+      sport_types = undefined;
+    }
+  }
+  if (!Array.isArray(sport_types)) sport_types = undefined;
+
+  let sport_data = row.sport_data;
+  if (typeof sport_data === 'string') {
+    try {
+      sport_data = JSON.parse(sport_data);
+    } catch {
+      sport_data = undefined;
+    }
+  }
+  if (Array.isArray(sport_data) && sport_data.length > 0) {
+    sport_types = sport_data.map((d: any) => d.name || '').filter(Boolean);
+  }
+  const sport_orders: Record<string, number> = {};
+  if (Array.isArray(sport_data)) {
+    sport_data.forEach((d: any) => {
+      const slug = d.slug || String(d.sport_id);
+      if (slug) sport_orders[slug] = typeof d.sort_order === 'number' ? d.sort_order : 0;
+    });
+  }
+
+  const { orgIcon, sport_data: _sd, ...rest } = row;
   return {
     ...rest,
     images: Array.isArray(images) ? images : [],
@@ -66,6 +95,9 @@ function rowToVenue(row: any): Venue {
     pricing: pricing,
     amenities: Array.isArray(amenities) ? amenities : [],
     org_icon: orgIcon ?? null,
+    sport_types,
+    sport_orders: Object.keys(sport_orders).length ? sport_orders : undefined,
+    sport_data: Array.isArray(sport_data) ? sport_data : undefined,
   } as Venue;
 }
 
@@ -94,6 +126,27 @@ async function apiFetch(path: string, options?: RequestInit): Promise<Response> 
 }
 
 export const db = {
+  async getSports(): Promise<Sport[]> {
+    const res = await apiFetch('/api/sports');
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  },
+
+  async createSport(payload: { name_en: string; name_zh?: string }): Promise<Sport> {
+    const name_en = (payload.name_en || '').trim();
+    if (!name_en) throw new Error('English name required');
+    const res = await apiFetch('/api/sports', {
+      method: 'POST',
+      body: JSON.stringify({ name: name_en, name_en, name_zh: (payload.name_zh || '').trim() || undefined }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || res.statusText);
+    }
+    return res.json();
+  },
+
   async getVenues(): Promise<Venue[]> {
     // Empty API_BASE = same-origin (e.g. Vercel). No throw.
     const res = await apiFetch('/api/venues');
@@ -106,17 +159,20 @@ export const db = {
   },
 
   async upsertVenue(venue: Partial<Venue>): Promise<Venue> {
-    // Empty API_BASE = same-origin (e.g. Vercel). No throw.
-    const { sort_order: _so, id, ...rest } = venue as any;
+    const { sort_order: _so, id, sport_data, ...rest } = venue as any;
     const needsOrgIconClear = (rest.org_icon === null || rest.org_icon === '');
     const dataToSave = venueToRow(rest);
     if (needsOrgIconClear) (dataToSave as Record<string, unknown>).orgIcon = null;
+    const body: Record<string, unknown> = { ...dataToSave };
+    if (Array.isArray(sport_data) && sport_data.length > 0) {
+      body.sport_data = sport_data.map((d) => ({ sport_id: d.sport_id, sort_order: d.sort_order ?? 0 }));
+    }
 
     const method = id ? 'PUT' : 'POST';
     const path = id ? `/api/venues/${id}` : '/api/venues';
     const res = await apiFetch(path, {
       method,
-      body: JSON.stringify(dataToSave),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -135,11 +191,10 @@ export const db = {
     }
   },
 
-  async updateVenueOrder(orderedIds: number[]): Promise<void> {
-    // Empty API_BASE = same-origin (e.g. Vercel). No throw.
+  async updateVenueOrder(orderedIds: number[], sportId?: number | null): Promise<void> {
     const res = await apiFetch('/api/venues/order', {
       method: 'PATCH',
-      body: JSON.stringify({ orderedIds }),
+      body: JSON.stringify({ orderedIds, sportId: sportId ?? undefined }),
     });
     if (!res.ok && res.status !== 204) {
       const err = await res.json().catch(() => ({ error: res.statusText }));

@@ -1,40 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Ground Court Finder</title>
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/black_G.png">
-    <link rel="alternate icon" href="/black_G.png">
-    <link rel="apple-touch-icon" href="/black_G.png">
-    <!-- Preconnect for fonts (no blocking script) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Load font stylesheet async to avoid render-blocking -->
-    <link
-      rel="preload"
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
-      as="style"
-      onload="this.onload=null;this.rel='stylesheet'"
-    >
-    <noscript>
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
-      >
-    </noscript>
-    <style>
-        * {
-            font-family: 'DM Sans', 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'DM Sans', 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- SEO: Primary -->
+  <title>Courts Finder | Find Sports Courts in Hong Kong</title>
+  <meta name="description"
+    content="Find and book Hong Kong sports courts near Hong Kong MTR stations. Updated weekly with the latest prices, real-time amenities, and walking distances. 每週更新最新場地與價錢。">
+  <meta name="keywords"
+    content="sports courts Hong Kong, court booking, MTR courts, 香港球場, 球場預訂, pickleball Hong Kong, 匹克球, 匹克球香港, pickleball 香港, pickleball 場地, pickle ball, 匹克球場地">
+  <meta name="author" content="TheGround.io">
+  <meta name="robots" content="index, follow">
+  <meta name="language" content="English, Chinese">
+
+  <!-- SEO: Canonical -->
+  <link rel="canonical" href="https://courts.theground.io/">
+
+  <!-- SEO: Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://courts.theground.io/">
+  <meta property="og:title" content="Courts Finder | Find Sports Courts in Hong Kong">
+  <meta property="og:description"
+    content="Find and book Hong Kong sports courts near Hong Kong MTR stations. Updated weekly with the latest prices, real-time amenities, and walking distances. 每週更新最新場地與價錢。">
+  <meta property="og:image" content="https://courts.theground.io/green_G.png">
+  <meta property="og:site_name" content="Courts Finder">
+  <meta property="og:locale" content="en_HK">
+  <meta property="og:locale:alternate" content="zh_HK">
+
+  <!-- SEO: Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://courts.theground.io/">
+  <meta name="twitter:title" content="Courts Finder | Find Sports Courts in Hong Kong">
+  <meta name="twitter:description"
+    content="Find and book Hong Kong sports courts near Hong Kong MTR stations. Updated weekly with the latest prices, real-time amenities, and walking distances. 每週更新最新場地與價錢。">
+  <meta name="twitter:image" content="https://courts.theground.io/green_G.png">
+
+  <!-- SEO: Geo (Hong Kong) -->
+  <meta name="geo.region" content="HK">
+  <meta name="geo.placename" content="Hong Kong, 香港">
+  <meta name="geo.position" content="22.3193;114.1694">
+  <meta name="ICBM" content="22.3193, 114.1694">
+
+  <!-- Additional Meta Tags -->
+  <meta name="last-modified" content="2026-02-25">
+  <meta name="revisit-after" content="7 days">
+  <meta name="distribution" content="global">
+  <meta name="rating" content="general">
+
+  <!-- SEO: Mobile / PWA -->
+  <meta name="theme-color" content="#007a67">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Courts Finder">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="msapplication-TileColor" content="#007a67">
+
+  <!-- Additional SEO Tags-->
+  <meta name="category"
+    content="Sports Courts, Sports & Recreation, Venue Booking, Community, Pickleball, 運動, 康樂, 場地預訂, 社群">
+  <meta name="subject" content="Hong Kong Sports Court Discovery and Booking Platform | 香港運動場地預訂與探索平台">
+  <meta name="target" content="athletes, pickleball players, sports enthusiasts, Hong Kong residents, 運動愛好者, 香港居民">
+  <meta name="copyright" content="TheGround.io">
+  <meta name="reply-to" content="info@theground.io">
+  <meta name="owner" content="TheGround.io">
+  <meta name="url" content="https://courts.theground.io/">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/black_G.png">
+  <link rel="alternate icon" href="/black_G.png">
+  <link rel="apple-touch-icon" href="/black_G.png">
+
+  <!-- Links to the creator's main website -->
+  <link rel="author" href="https://theground.io">
+
+  <!-- Preconnect for fonts (no blocking script) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXZE1FNNCJ"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+
+    gtag('config', 'G-XXZE1FNNCJ');
+  </script>
+
+  <!-- Load font stylesheet async to avoid render-blocking -->
+  <link rel="preload"
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&family=Noto+Sans+TC:wght@400;500;600;700&display=swap"
+    as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;900&family=Noto+Sans+TC:wght@400;500;600;700&display=swap">
+  </noscript>
+  <style>
+    * {
+      font-family: 'DM Sans', 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-family: 'DM Sans', 'Noto Sans TC', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+  </style>
 </head>
+
 <body class="bg-white dark:bg-gray-900 transition-colors custom-scrollbar">
-    <div id="root"></div>
-    <script type="module" src="/src/main.ts"></script>
+  <div id="root"></div>
+  <script type="module" src="/src/main.ts"></script>
 </body>
+
 </html>

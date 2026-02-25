@@ -4,15 +4,19 @@ import type { Venue, Language } from '../../types';
 
 declare const google: any;
 
-const props = defineProps<{
-  venue: Venue | null;
-  onSave: (v: any) => Promise<void>;
-  onCancel: () => void;
-  onDelete?: (id: number) => void;
-  language: Language;
-  t: (key: string) => string;
-  darkMode: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    venue: Venue | null;
+    sports?: { id: number; name: string; slug: string }[];
+    onSave: (v: any) => Promise<void>;
+    onCancel: () => void;
+    onDelete?: (id: number) => void;
+    language: Language;
+    t: (key: string) => string;
+    darkMode: boolean;
+  }>(),
+  { sports: () => [] }
+);
 
 function parseSocialLinks(s: string | undefined): Record<string, string> {
   const empty = { instagram: '', facebook: '', x: '', threads: '', youtube: '', website: '' };
@@ -64,14 +68,16 @@ const defaultForm = {
   socialLink: '',
   org_icon: '',
   coordinates: { lat: 22.3193, lng: 114.1694 },
-  socialLinks: { instagram: '', facebook: '', x: '', threads: '', youtube: '', website: '' }
+  socialLinks: { instagram: '', facebook: '', x: '', threads: '', youtube: '', website: '' },
+  sport_data: [] as { sport_id: number; name?: string; slug?: string; sort_order: number }[]
 };
 
 const formData = reactive<any>(
   props.venue
-    ? { ...props.venue, socialLinks: parseSocialLinks(props.venue.socialLink) }
+    ? { ...props.venue, socialLinks: parseSocialLinks(props.venue.socialLink), sport_data: Array.isArray(props.venue.sport_data) ? props.venue.sport_data.map((d) => ({ ...d, sort_order: d.sort_order ?? 0 })) : [] }
     : { ...defaultForm }
 );
+if (!formData.sport_data) formData.sport_data = [];
 
 const placesApiError = ref(false);
 const isUploading = ref(false);
@@ -379,6 +385,34 @@ const clearOrgIcon = () => {
   formData.org_icon = null;
 };
 
+const addSport = (sport: { id: number; name: string; slug: string }) => {
+  if (formData.sport_data.some((d: any) => d.sport_id === sport.id)) return;
+  formData.sport_data.push({ sport_id: sport.id, name: sport.name, slug: sport.slug, sort_order: formData.sport_data.length });
+};
+const removeSportBySortedIndex = (sortedIndex: number) => {
+  const sorted = sortedSportData();
+  const item = sorted[sortedIndex];
+  if (!item) return;
+  const i = formData.sport_data.findIndex((d: any) => d.sport_id === item.sport_id);
+  if (i !== -1) formData.sport_data.splice(i, 1);
+  formData.sport_data.forEach((d: any, idx: number) => { d.sort_order = idx; });
+};
+const moveSportPriority = (sortedIndex: number, delta: number) => {
+  const sorted = sortedSportData();
+  const ni = sortedIndex + delta;
+  if (ni < 0 || ni >= sorted.length) return;
+  const a = sorted[sortedIndex];
+  const b = sorted[ni];
+  const ai = formData.sport_data.findIndex((d: any) => d.sport_id === a.sport_id);
+  const bi = formData.sport_data.findIndex((d: any) => d.sport_id === b.sport_id);
+  if (ai === -1 || bi === -1) return;
+  const so = formData.sport_data[ai].sort_order;
+  formData.sport_data[ai].sort_order = formData.sport_data[bi].sort_order;
+  formData.sport_data[bi].sort_order = so;
+};
+const selectedSportIds = () => new Set((formData.sport_data || []).map((d: any) => d.sport_id));
+const sortedSportData = () => (formData.sport_data || []).slice().sort((a: any, b: any) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
 // Geocode address to get correct lat/lng before save (so map pins are right)
 function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   return new Promise((resolve) => {
@@ -507,6 +541,7 @@ const inputClass =
         <div class="flex flex-col sm:flex-row gap-6 items-start">
           <div class="flex-shrink-0">
             <label :class="labelClass" class="block mb-2">Org Icon (one only)</label>
+            <p class="text-[11px] opacity-60 mb-2">Square (1:1) recommended for consistent display.</p>
             <div class="flex flex-wrap items-center gap-3">
               <div
                 v-if="formData.org_icon"
@@ -542,6 +577,46 @@ const inputClass =
             </div>
           </div>
           <div class="flex-1 min-w-0 flex flex-col gap-4 w-full">
+            <div>
+              <label :class="labelClass">Sport types (priority order)</label>
+              <p class="text-[11px] opacity-60 mb-2">Add sports and set order for this court. Drag order is used per-sport on the admin list.</p>
+              <p v-if="!(sports && sports.length)" class="text-amber-600 dark:text-amber-400 text-sm font-bold mb-2">
+                {{ language === 'en' ? 'No sport types yet. Add them in Admin (Manage Courts → + Add sport) first.' : '尚未有運動類型。請先在管理後台（管理場地 → + Add sport）新增。' }}
+              </p>
+              <div class="flex flex-wrap gap-2 mb-2">
+                <button
+                  v-for="s in (sports || [])"
+                  :key="s.id"
+                  type="button"
+                  class="px-3 py-1.5 rounded-lg text-sm font-bold border-2 border-dashed transition-all"
+                  :class="selectedSportIds().has(s.id) ? 'border-[#007a67] bg-[#007a67]/10 text-[#007a67] cursor-default' : (darkMode ? 'border-gray-600 text-gray-400 hover:border-[#007a67] hover:text-[#007a67]' : 'border-gray-300 text-gray-600 hover:border-[#007a67] hover:text-[#007a67]')"
+                  :disabled="selectedSportIds().has(s.id)"
+                  @click="addSport(s)"
+                >
+                  + {{ language === 'zh' && s.name_zh ? s.name_zh : s.name }}
+                </button>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <div
+                  v-for="(d, index) in sortedSportData()"
+                  :key="d.sport_id"
+                  class="flex items-center gap-1 px-3 py-2 rounded-xl border"
+                  :class="darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-100 border-gray-200'"
+                >
+                  <span class="text-xs font-black text-[#007a67] w-5">{{ index + 1 }}</span>
+                  <button type="button" class="p-1 rounded hover:bg-black/10" aria-label="Move up" @click="moveSportPriority(index, -1)">
+                    ▲
+                  </button>
+                  <button type="button" class="p-1 rounded hover:bg-black/10" aria-label="Move down" @click="moveSportPriority(index, 1)">
+                    ▼
+                  </button>
+                  <span class="font-bold text-sm">{{ (language === 'zh' && d.name_zh) ? d.name_zh : (d.name || d.slug) }}</span>
+                  <button type="button" class="p-1 rounded hover:bg-red-500/20 text-red-500" aria-label="Remove" @click="removeSportBySortedIndex(index)">
+                    ×
+                  </button>
+                </div>
+              </div>
+            </div>
             <div>
               <label :class="labelClass">Court Name *</label>
               <input

@@ -60,6 +60,28 @@ app.get('/api/venues', async (req, res) => {
     const [rows] = await db.execute(
       `SELECT * FROM venues ORDER BY sort_order IS NULL, sort_order ASC, name ASC`
     );
+    try {
+      let sportsRows;
+      try {
+        [sportsRows] = await db.execute('SELECT id, name, name_zh, slug FROM sports ORDER BY name');
+      } catch (_) {
+        const [r] = await db.execute('SELECT id, name, slug FROM sports ORDER BY name').catch(() => [[]]);
+        sportsRows = (r || []).map((s) => ({ ...s, name_zh: null }));
+      }
+      const [vsRows] = await db.execute('SELECT venue_id, sport_id, sort_order FROM venue_sports');
+      const sportsById = Object.fromEntries((sportsRows || []).map((s) => [s.id, s]));
+      const byVenue = {};
+      (vsRows || []).forEach((vs) => {
+        if (!byVenue[vs.venue_id]) byVenue[vs.venue_id] = [];
+        const s = sportsById[vs.sport_id];
+        if (s) byVenue[vs.venue_id].push({ sport_id: s.id, name: s.name, name_zh: s.name_zh ?? null, slug: s.slug, sort_order: vs.sort_order });
+      });
+      rows.forEach((r) => {
+        r.sport_data = byVenue[r.id] || [];
+      });
+    } catch (_) {
+      /* sports/venue_sports tables may not exist yet */
+    }
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -98,8 +120,19 @@ app.post('/api/venues', async (req, res) => {
       `INSERT INTO venues (${keys.map(k => `\`${k}\``).join(', ')}) VALUES (${placeholders})`,
       values
     );
-
-    res.status(201).json({ id: result.insertId, ...row });
+    const venueId = result.insertId;
+    const sportData = req.body?.sport_data;
+    if (Array.isArray(sportData) && sportData.length > 0) {
+      try {
+        await db.execute('DELETE FROM venue_sports WHERE venue_id = ?', [venueId]);
+        for (let i = 0; i < sportData.length; i++) {
+          const sid = sportData[i]?.sport_id;
+          if (sid != null) await db.execute('INSERT INTO venue_sports (venue_id, sport_id, sort_order) VALUES (?, ?, ?)', [venueId, sid, sportData[i].sort_order ?? i]);
+        }
+      } catch (_) {}
+    }
+    row.sport_data = sportData || [];
+    res.status(201).json({ id: venueId, ...row });
   } catch (err) {
     console.error('POST Error:', err.message);
     res.status(500).json({ error: err.message });
@@ -130,6 +163,16 @@ app.put('/api/venues/:id', async (req, res) => {
       const values = [...Object.values(row), id];
 
       await db.execute(`UPDATE venues SET ${setClause} WHERE id = ?`, values);
+      const sportData = req.body?.sport_data;
+      if (Array.isArray(sportData)) {
+        try {
+          await db.execute('DELETE FROM venue_sports WHERE venue_id = ?', [id]);
+          for (let i = 0; i < sportData.length; i++) {
+            const sid = sportData[i]?.sport_id;
+            if (sid != null) await db.execute('INSERT INTO venue_sports (venue_id, sport_id, sort_order) VALUES (?, ?, ?)', [id, sid, sportData[i].sort_order ?? i]);
+          }
+        } catch (_) {}
+      }
       res.json({ id, ...row });
     } catch (err) {
       res.status(500).json({ error: err.message });

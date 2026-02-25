@@ -60,9 +60,21 @@ const props = defineProps<{
   onEditVenue: (id: number, v: any) => void;
   availableStations: string[];
   onClearFilters?: () => void;
+  onOpenDetail?: () => void;
+  onBackFromDetail?: () => void;
+  /** When true (e.g. landed on /venues/slug), show full detail page. */
+  forceShowDetail?: boolean;
 }>();
 
 const showDetailPage = ref(false);
+
+watch(
+  () => props.forceShowDetail,
+  (force) => {
+    if (force && props.selectedVenue) showDetailPage.value = true;
+  },
+  { immediate: true }
+);
 
 const currentIndex = computed(() => {
   if (!props.selectedVenue) return -1;
@@ -111,7 +123,7 @@ const goNextVenue = () => {
   <VenueDetail
     v-if="showDetailPage && selectedVenue"
     :venue="selectedVenue"
-    :onBack="() => (showDetailPage = false)"
+    :onBack="() => { showDetailPage = false; props.onBackFromDetail?.(); }"
     :language="language"
     :t="t"
     :darkMode="darkMode"
@@ -327,7 +339,7 @@ const goNextVenue = () => {
             :darkMode="darkMode"
             :isSaved="savedVenues.includes(selectedVenue.id)"
             :onToggleSave="() => toggleSave(selectedVenue!.id)"
-            :onViewDetails="() => (showDetailPage = true)"
+            :onViewDetails="() => { showDetailPage = true; props.onOpenDetail?.(); }"
           />
         </div>
         <div class="flex items-center justify-between px-4 pt-3 pb-1 text-[12px] font-[700] uppercase tracking-widest opacity-60">
@@ -554,6 +566,7 @@ const goNextVenue = () => {
           :onViewDetails="() => {
             onSelectVenue(venue);
             showDetailPage = true;
+            props.onOpenDetail?.();
           }"
         />
       </div>

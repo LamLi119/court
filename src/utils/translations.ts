@@ -37,7 +37,17 @@ export const translations = {
         lessThan10: "< 10 min",
         mtrUnder5Min: "MTR < 5 min",
         mtrUnder10Min: "MTR < 10 min",
-        walk: "walk"
+        walk: "walk",
+        sportType: "Sport type",
+        allSports: "All sports",
+        clearAll: "Clear all",
+        saveSuccess: "Saved successfully.",
+        saveFailed: "Save failed.",
+        sportTypesPriority: "Sport types (priority order)",
+        sportTypesHint: "Add sports and set order for this court. Drag order is used per-sport on the admin list.",
+        noSportTypesHint: "No sport types yet. Add them in Admin (Manage Courts → + Add sport) first.",
+        chooseSportToAdd: "Choose a sport to add…",
+        sportAdded: "(added)"
     },
     zh: {
         title: "香港匹克球場地搜尋",
@@ -74,7 +84,17 @@ export const translations = {
         lessThan10: "< 10 分鐘",
         mtrUnder5Min: "港鐵 < 5 分鐘",
         mtrUnder10Min: "港鐵 < 10 分鐘",
-        walk: "步行"
+        walk: "步行",
+        sportType: "運動類型",
+        allSports: "全部運動",
+        clearAll: "清除全部",
+        saveSuccess: "儲存成功。",
+        saveFailed: "儲存失敗。",
+        sportTypesPriority: "運動類型（優先順序）",
+        sportTypesHint: "加入運動類型並設定此場地的順序。管理列表會依各運動的拖曳順序顯示。",
+        noSportTypesHint: "尚未有運動類型。請先在管理後台（管理場地 → + Add sport）新增。",
+        chooseSportToAdd: "選擇運動類型以加入…",
+        sportAdded: "（已加入）"
     }
 };
 

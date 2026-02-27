@@ -31,7 +31,8 @@ function sanitizeRow(body) {
   const allowed = new Set([
     'name', 'description', 'mtrStation', 'mtrExit', 'walkingDistance', 'address',
     'ceilingHeight', 'startingPrice', 'pricing', 'images', 'amenities', 'whatsapp',
-    'socialLink', 'orgIcon', 'coordinates', 'sort_order',
+    'socialLink', 'orgIcon', 'coordinates', 'sort_order', 'admin_password',
+    'membership_enabled', 'membership_description', 'membership_join_link',
   ]);
   const row = {};
   for (const [k, v] of Object.entries(body || {})) {
@@ -82,6 +83,10 @@ app.get('/api/venues', async (req, res) => {
     } catch (_) {
       /* sports/venue_sports tables may not exist yet */
     }
+    // Do not expose admin_password in public list (security)
+    rows.forEach((r) => {
+      if (Object.prototype.hasOwnProperty.call(r, 'admin_password')) delete r.admin_password;
+    });
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

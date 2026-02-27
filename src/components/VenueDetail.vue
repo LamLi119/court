@@ -60,6 +60,8 @@ const props = defineProps<{
   savedVenues: number[];
   toggleSave: (id: number) => void;
   isAdmin: boolean;
+  /** When true, show Edit button (e.g. super admin or court admin for this venue). */
+  canEdit?: boolean;
   onEdit: () => void;
 }>();
 
@@ -234,7 +236,7 @@ const venueImageAlt = computed(() => getVenueImageAlt(props.venue, props.languag
       </h1>
       <div class="flex gap-2">
         <button
-          v-if="isAdmin"
+          v-if="(canEdit !== undefined ? canEdit : isAdmin)"
           class="p-2 bg-blue-500 text-white rounded-full"
           @click="onEdit"
         >
@@ -303,6 +305,28 @@ const venueImageAlt = computed(() => getVenueImageAlt(props.venue, props.languag
               >
                 <img :src="venue.pricing.imageUrl" class="w-full" alt="Pricing" />
               </button>
+            </div>
+            <!-- Per-court membership -->
+            <div
+              v-if="venue.membership_enabled && (venue.membership_description || venue.membership_join_link)"
+              class="p-4 rounded-[12px] border space-y-2"
+              :class="darkMode ? 'bg-[#007a67]/20 border-gray-700' : 'bg-[#007a67]/10 border-gray-200'"
+            >
+              <h3 class="text-[11px] uppercase tracking-widest font-bold opacity-60">
+                {{ language === 'en' ? 'Membership' : '會員' }}
+              </h3>
+              <p v-if="venue.membership_description" class="text-[14px] font-[400] leading-relaxed" :class="darkMode ? 'text-gray-200' : 'text-gray-800'">
+                {{ venue.membership_description }}
+              </p>
+              <a
+                v-if="venue.membership_join_link"
+                :href="venue.membership_join_link"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-block font-bold text-sm text-[#007a67] hover:underline"
+              >
+                {{ language === 'en' ? 'Join member' : '加入會員' }} →
+              </a>
             </div>
             <!-- Desktop: social links at left bottom with full URL -->
             <template v-if="socialLinksList().length > 0">

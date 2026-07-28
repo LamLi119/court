@@ -949,7 +949,7 @@ const handleSaveVenue = async (venueData: any) => {
           return;
         }
         currentTab = tab;
-        if (tab === 'explore') { goToExplore(); }
+        if (tab === 'explore') { filterSavedOnly = false; goToExplore(); }
         else if (tab === 'saved') { goToExplore(); currentTab = 'saved'; filterSavedOnly = true; }
         else { selectedVenue = null; showDesktopDetail = false; }
       }"

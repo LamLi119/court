@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { BlogPostSummary, Language } from '../../../types';
-import { db } from '../../../db';
+import { getBlogPosts } from '../../utils/blogApi';
 import AppFooter from '../layout/AppFooter.vue';
 
 const props = defineProps<{
@@ -36,7 +36,7 @@ onMounted(async () => {
   loading.value = true;
   error.value = null;
   try {
-    posts.value = await db.getBlogPosts();
+    posts.value = await getBlogPosts();
   } catch (err: any) {
     error.value = err?.message || 'Failed to load blog posts';
   } finally {
@@ -98,7 +98,7 @@ onMounted(async () => {
             </div>
             <time
               v-if="post.published_at"
-              class="text-xs font-semibold uppercase tracking-wide text-[#007a67]"
+              class="text-xs font-semibold uppercase tracking-wide text-gray-500"
               :datetime="post.published_at"
             >
               {{ formatDate(post.published_at) }}
@@ -110,7 +110,7 @@ onMounted(async () => {
               {{ post.title }}
             </h2>
             
-            <span class="mt-4 inline-flex text-sm font-bold text-[#007a67]">
+            <span class="mt-4 flex justify-end text-sm font-bold text-[#007a67]">
               {{ t('blogReadMore') }} →
             </span>
           </a>

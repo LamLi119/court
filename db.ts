@@ -210,7 +210,22 @@ async function apiFetch(path: string, options?: RequestInit): Promise<Response> 
   });
 }
 
-export const db = {
+export type DbClient = {
+  getSports(): Promise<Sport[]>;
+  createSport(payload: { name_en: string; name_zh?: string }): Promise<Sport>;
+  updateSport(id: number, payload: { name: string; name_zh?: string }): Promise<Sport>;
+  deleteSport(id: number): Promise<void>;
+  updateSportsOrder(orderedIds: number[]): Promise<void>;
+  getVenues(superAdminPassword?: string): Promise<Venue[]>;
+  upsertVenue(venue: Partial<Venue>, options?: { isSuperAdmin?: boolean }): Promise<Venue>;
+  deleteVenue(id: number): Promise<void>;
+  updateVenueOrder(orderedIds: number[], sportId?: number | null): Promise<void>;
+  getBlogPosts(): Promise<BlogPostSummary[]>;
+  getBlogPost(slug: string): Promise<BlogPost | null>;
+  syncBlogFromNotion(password?: string): Promise<{ success: boolean; synced: number; removed: number; slugs: string[] }>;
+};
+
+export const db: DbClient = {
   async getSports(): Promise<Sport[]> {
     const res = await apiFetch('/api/sports');
     if (!res.ok) return [];

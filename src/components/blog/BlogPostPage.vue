@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { BlogPost, Language } from '../../../types';
-import { db } from '../../../db';
+import { getBlogPost } from '../../utils/blogApi';
 import AppFooter from '../layout/AppFooter.vue';
 
 const props = defineProps<{
@@ -42,7 +42,7 @@ async function loadPost() {
   loading.value = true;
   error.value = null;
   try {
-    const data = await db.getBlogPost(slug.value);
+    const data = await getBlogPost(slug.value);
     if (!data) {
       router.replace('/blog');
       return;
@@ -90,7 +90,7 @@ watch(
         <header class="mb-8">
           <time
             v-if="post.published_at"
-            class="text-xs font-semibold uppercase tracking-wide text-[#007a67]"
+            class="text-xs font-semibold uppercase tracking-wide text-gray-500"
             :datetime="post.published_at"
           >
             {{ formatDate(post.published_at) }}
@@ -106,7 +106,7 @@ watch(
 
         <div
           v-if="post.cover_url"
-          class="mb-10 overflow-hidden"
+          class="mb-10 overflow-hidden rounded-3xl shadow-lg"
         >
           <img
             :src="post.cover_url"

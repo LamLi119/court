@@ -100,7 +100,7 @@ function setLangFromMenu(lang: Language) {
           <a
             href="/explore"
             class="btn btn-nav no-underline"
-            :class="!isHome && currentTab === 'explore' ? 'btn-nav-active' : ''"
+            :class="route.name === 'explore' && currentTab === 'explore' ? 'btn-nav-active' : ''"
             @click.prevent="navToExplore"
           >
             {{ t('explore') }}
@@ -114,7 +114,7 @@ function setLangFromMenu(lang: Language) {
             {{ t('blog') }}
           </a>
           <button type="button" class="btn btn-nav min-h-[44px]"
-            :class="currentTab === 'saved' ? 'text-red-500' : ''" @click="setTab('saved')">
+            :class="currentTab === 'saved' ? 'btn-nav-saved' : ''" @click="setTab('saved')">
             {{ t('saved') }}
           </button>
         </nav>

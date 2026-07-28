@@ -160,6 +160,11 @@
   color: var(--btn-nav-text-active);
 }
 
+.btn-nav-saved,
+.btn-nav-saved:hover:not(:disabled) {
+  color: #007a67;
+}
+
 /* Nav icon-only (e.g. back, theme toggle, admin) */
 .btn-nav-icon {
   min-height: 44px;

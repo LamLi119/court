@@ -1,6 +1,6 @@
 // Database: Google Cloud SQL via backend API (see server/ and CLOUD_SQL_SETUP.md).
 // Set VITE_API_URL in .env to your backend URL (e.g. http://localhost:3001).
-import type { Venue, Sport } from './types';
+import type { Venue, Sport, BlogPost, BlogPostSummary } from './types';
 
 // Empty = same-origin (e.g. Vercel: frontend and /api/* on same domain). Set for local dev or external API.
 const API_BASE = (import.meta.env.VITE_API_URL ?? '').trim();
@@ -210,7 +210,22 @@ async function apiFetch(path: string, options?: RequestInit): Promise<Response> 
   });
 }
 
-export const db = {
+export type DbClient = {
+  getSports(): Promise<Sport[]>;
+  createSport(payload: { name_en: string; name_zh?: string }): Promise<Sport>;
+  updateSport(id: number, payload: { name: string; name_zh?: string }): Promise<Sport>;
+  deleteSport(id: number): Promise<void>;
+  updateSportsOrder(orderedIds: number[]): Promise<void>;
+  getVenues(superAdminPassword?: string): Promise<Venue[]>;
+  upsertVenue(venue: Partial<Venue>, options?: { isSuperAdmin?: boolean }): Promise<Venue>;
+  deleteVenue(id: number): Promise<void>;
+  updateVenueOrder(orderedIds: number[], sportId?: number | null): Promise<void>;
+  getBlogPosts(): Promise<BlogPostSummary[]>;
+  getBlogPost(slug: string): Promise<BlogPost | null>;
+  syncBlogFromNotion(password?: string): Promise<{ success: boolean; synced: number; removed: number; slugs: string[] }>;
+};
+
+export const db: DbClient = {
   async getSports(): Promise<Sport[]> {
     const res = await apiFetch('/api/sports');
     if (!res.ok) return [];
@@ -334,5 +349,38 @@ export const db = {
       const err = await res.json().catch(() => ({ error: res.statusText }));
       throw new Error(err.error || res.statusText);
     }
+  },
+
+  async getBlogPosts(): Promise<BlogPostSummary[]> {
+    const res = await apiFetch('/api/blog');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || res.statusText);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  },
+
+  async getBlogPost(slug: string): Promise<BlogPost | null> {
+    const res = await apiFetch(`/api/blog/${encodeURIComponent(slug)}`);
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || res.statusText);
+    }
+    return res.json();
+  },
+
+  async syncBlogFromNotion(password?: string): Promise<{ success: boolean; synced: number; removed: number; slugs: string[] }> {
+    const body = password ? JSON.stringify({ password }) : undefined;
+    const res = await apiFetch('/api/blog/sync', {
+      method: 'POST',
+      ...(body ? { body } : {}),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || res.statusText);
+    }
+    return res.json();
   },
 };

@@ -6,12 +6,15 @@ import { translate } from './utils/translations';
 import { getStationCanonicalEn } from './utils/mtrStations';
 import { venueMatchesDistricts, isValidDistrictSlug } from './utils/hkDistricts';
 import { slugify } from './utils/slugify';
-import { resetSeoToDefault, applySearchPageSeo, applyDistrictSportPageSeo, applyLandingPageSeo, applyExplorePageSeo } from './utils/seo';
+import { resetSeoToDefault, applySearchPageSeo, applyDistrictSportPageSeo, applyLandingPageSeo, applyExplorePageSeo, applyBlogListSeo, applyBlogPostSeo } from './utils/seo';
 import { useVenueSlug } from './router';
 import { db } from '../db';
 import Header from './components/layout/Header.vue';
 import MobileNav from './components/layout/MobileNav.vue';
 import LandingPage from './components/landing/LandingPage.vue';
+import AboutPage from './components/about/AboutPage.vue';
+import BlogListPage from './components/blog/BlogListPage.vue';
+import BlogPostPage from './components/blog/BlogPostPage.vue';
 import { useAuth } from './composables/auth';
 import { useIsMobile } from './composables/useIsMobile';
 import { useGrindUpcomingEvents } from './composables/useGrindUpcomingEvents';
@@ -34,7 +37,6 @@ const VenueDetail = defineAsyncComponent(() => import('./components/venue/VenueD
 const UpcomingEventsPage = defineAsyncComponent(() => import('./components/venue/UpcomingEventsPage.vue'));
 const VenueForm = defineAsyncComponent(() => import('./components/admin/VenueForm.vue'));
 const AdminPage = defineAsyncComponent(() => import('./components/admin/AdminPage.vue'));
-const AboutPage = defineAsyncComponent(() => import('./components/about/AboutPage.vue'));
 
 const initialVenueData = hydrateInitialVenueData();
 /** True after a successful /api/venues fetch this page load. Bootstrap alone must not skip the API. */
@@ -102,6 +104,7 @@ const invalidateVenuesCache = () => {
 };
 
 const adminStatus = ref<{ type: 'none' | 'super' | 'court'; allowedIds: number[] }>({ type: 'none', allowedIds: [] });
+const superAdminSyncPassword = ref('');
 const isSuperAdmin = computed(() => adminStatus.value.type === 'super');
 const isAnyAdmin = computed(() => adminStatus.value.type !== 'none');
 
@@ -267,6 +270,13 @@ watch(
       if (canonical && typeof window !== 'undefined') {
         canonical.setAttribute('href', `${window.location.origin}/about`);
       }
+    } else if (route.name === 'blog') {
+      selectedVenue.value = null;
+      showDesktopDetail.value = false;
+      applyBlogListSeo(language.value);
+    } else if (route.name === 'blog-post') {
+      selectedVenue.value = null;
+      showDesktopDetail.value = false;
     } else if (route.name === 'home' || route.name === 'admin') {
       if (route.name === 'home') {
         currentTab.value = 'explore';
@@ -332,6 +342,9 @@ watch(
       document.title = language.value === 'zh'
         ? '關於 Courts by The Ground | Courts'
         : 'About Courts by The Ground | Courts';
+    }
+    if (route.name === 'blog') {
+      applyBlogListSeo(language.value);
     }
     if (route.name === 'explore' && venues.value.length > 0) {
       applyExplorePageSeo(venues.value, language.value);
@@ -405,14 +418,7 @@ onMounted(() => {
   (window as any).__adminPopState = onPopState;
 
   const restoreAdminSession = async () => {
-    // Avoid a guaranteed 401 for anonymous visitors (no admin cookie).
-    const hasAdminCookie =
-      typeof document !== 'undefined' &&
-      document.cookie.split(';').some((c) => c.trim().startsWith('courts_admin_session='));
-    if (!hasAdminCookie) {
-      adminStatus.value = { type: 'none', allowedIds: [] };
-      return;
-    }
+    // Session cookie is httpOnly — always verify with the API (document.cookie cannot see it).
     try {
       const res = await fetch(courtApiUrl('/api/auth/session'), { method: 'GET', credentials: 'include' });
       if (!res.ok) throw new Error('No admin session');
@@ -422,6 +428,7 @@ onMounted(() => {
       if (isAdminPath()) currentTab.value = 'admin';
     } catch {
       adminStatus.value = { type: 'none', allowedIds: [] };
+      superAdminSyncPassword.value = '';
     }
   };
   void loadData();
@@ -538,6 +545,11 @@ const handleAdminLogin = async () => {
     if (res.ok) {
       const data = await res.json();
       adminStatus.value = { type: data.type === 'super' ? 'super' : 'court', allowedIds: data.allowedVenueIds || [] };
+      if (data.type === 'super') {
+        superAdminSyncPassword.value = adminPassword.value;
+      } else {
+        superAdminSyncPassword.value = '';
+      }
       showAdminLogin.value = false;
       adminPassword.value = '';
       currentTab.value = 'admin';
@@ -570,6 +582,11 @@ const handleAdminLoginFromUserLoginPage = async (password: string) => {
     if (res.ok) {
       const data = await res.json();
       adminStatus.value = { type: data.type === 'super' ? 'super' : 'court', allowedIds: data.allowedVenueIds || [] };
+      if (data.type === 'super') {
+        superAdminSyncPassword.value = pwd;
+      } else {
+        superAdminSyncPassword.value = '';
+      }
       currentTab.value = 'admin';
       invalidateVenuesCache();
       await loadData();
@@ -593,6 +610,7 @@ const handleAdminLogout = async () => {
     // ignore logout request failure; clear local state anyway
   }
   adminStatus.value = { type: 'none', allowedIds: [] };
+  superAdminSyncPassword.value = '';
   currentTab.value = 'explore';
   if (route.name === 'admin') {
     await router.push('/');
@@ -931,7 +949,7 @@ const handleSaveVenue = async (venueData: any) => {
           return;
         }
         currentTab = tab;
-        if (tab === 'explore') { goToExplore(); }
+        if (tab === 'explore') { filterSavedOnly = false; goToExplore(); }
         else if (tab === 'saved') { goToExplore(); currentTab = 'saved'; filterSavedOnly = true; }
         else { selectedVenue = null; showDesktopDetail = false; }
       }"
@@ -952,8 +970,10 @@ const handleSaveVenue = async (venueData: any) => {
         :venues="venues"
         :sports="sports"
         :language="language"
+        :t="t"
         :dark-mode="darkMode"
         :is-super-admin="isSuperAdmin"
+        :super-admin-sync-password="superAdminSyncPassword"
         :admin-status="adminStatus"
         @add-venue="() => openVenueForm(null)"
         @edit-venue="(v) => openVenueForm(v)"
@@ -1059,6 +1079,23 @@ const handleSaveVenue = async (venueData: any) => {
           :t="t"
           :dark-mode="darkMode"
           :set-language="(l: Language) => { language = l; }"
+        />
+
+        <BlogListPage
+          v-else-if="route.name === 'blog'"
+          :language="language"
+          :t="t"
+          :dark-mode="darkMode"
+          :set-language="(l: Language) => { language = l; }"
+        />
+
+        <BlogPostPage
+          v-else-if="route.name === 'blog-post'"
+          :language="language"
+          :t="t"
+          :dark-mode="darkMode"
+          :set-language="(l: Language) => { language = l; }"
+          @post-loaded="(post) => applyBlogPostSeo(post, language)"
         />
 
         <template

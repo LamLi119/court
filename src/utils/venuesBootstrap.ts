@@ -1,7 +1,7 @@
 import type { Venue } from '../../types';
 import { rowToVenue } from '../../db';
 
-export type SportOption = { id: number; name: string; name_zh?: string | null; slug: string };
+export type SportOption = { id: number; name: string; name_zh?: string | null; slug: string; sort_order?: number | null };
 
 export type VenuesBootstrapPayload = {
   venues?: Venue[];

@@ -32,9 +32,10 @@ export type SportVenueCount = {
   name: string;
   name_zh?: string | null;
   count: number;
+  sort_order?: number | null;
 };
 
-type SportOption = { name: string; name_zh?: string | null; slug: string };
+type SportOption = { name: string; name_zh?: string | null; slug: string; sort_order?: number | null };
 
 export const HOME_TITLE_EN = `${BRAND} | Find Sports Courts Across All ${HK_DISTRICT_COUNT} Hong Kong Districts`;
 export const HOME_TITLE_ZH = `運動場地搜尋 全港${HK_DISTRICT_COUNT}區 80+場館 | ${BRAND}`;
@@ -65,10 +66,16 @@ export function countVenuesBySport(venues: Venue[], sports: SportOption[]): Spor
       slug: sport.slug,
       name: sport.name,
       name_zh: sport.name_zh,
+      sort_order: sport.sort_order ?? null,
       count: venues.filter((v) => venueMatchesSportSlug(v, sport.slug)).length,
     }))
     .filter((s) => s.count > 0)
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => {
+      const ao = a.sort_order ?? 9999;
+      const bo = b.sort_order ?? 9999;
+      if (ao !== bo) return ao - bo;
+      return b.count - a.count;
+    });
 }
 
 function sportLabel(item: SportVenueCount, lang: 'en' | 'zh'): string {

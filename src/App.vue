@@ -79,7 +79,7 @@ const isLoading = ref(!initialVenueData.hasData);
 const mobileViewMode = ref<'map' | 'list'>('list');
 
 const venues = ref<Venue[]>(initialVenueData.venues);
-const sports = ref<{ id: number; name: string; name_zh?: string | null; slug: string }[]>(initialVenueData.sports);
+const sports = ref<{ id: number; name: string; name_zh?: string | null; slug: string; sort_order?: number | null }[]>(initialVenueData.sports);
 const savedVenues = ref<number[]>([]);
 
 const sportDisplayName = (s: { name: string; name_zh?: string | null }) =>

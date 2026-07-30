@@ -79,7 +79,7 @@ const isLoading = ref(!initialVenueData.hasData);
 const mobileViewMode = ref<'map' | 'list'>('list');
 
 const venues = ref<Venue[]>(initialVenueData.venues);
-const sports = ref<{ id: number; name: string; name_zh?: string | null; slug: string }[]>(initialVenueData.sports);
+const sports = ref<{ id: number; name: string; name_zh?: string | null; slug: string; sort_order?: number | null }[]>(initialVenueData.sports);
 const savedVenues = ref<number[]>([]);
 
 const sportDisplayName = (s: { name: string; name_zh?: string | null }) =>
@@ -186,6 +186,10 @@ function syncSelectedVenueFromList() {
     if (venue) {
       selectedVenue.value = venue;
       showDesktopDetail.value = true;
+      const canonicalSlug = useVenueSlug(venue);
+      if (canonicalSlug && canonicalSlug !== slug) {
+        void router.replace('/venues/' + canonicalSlug);
+      }
     }
     return;
   }
@@ -218,6 +222,13 @@ watch(
       const venue = resolveVenueBySlug(route.params.slug);
       selectedVenue.value = venue;
       showDesktopDetail.value = !!venue;
+      if (venue) {
+        const requestedSlug = String(route.params.slug).toLowerCase().trim();
+        const canonicalSlug = useVenueSlug(venue);
+        if (canonicalSlug && canonicalSlug !== requestedSlug) {
+          void router.replace('/venues/' + canonicalSlug);
+        }
+      }
       if (!venue && venues.value.length > 0) router.replace('/');
     } else if (
       route.name === 'search-district'
@@ -1105,6 +1116,7 @@ const handleSaveVenue = async (venueData: any) => {
           :mode="mobileViewMode"
           :setMode="(m: 'map' | 'list') => { mobileViewMode = m; }"
           :venues="filteredVenues"
+          :all-venues="venues"
           :selectedVenue="selectedVenue"
           :onSelectVenue="(v: Venue | null) => { selectedVenue = v; }"
           :searchQuery="searchQuery"
@@ -1144,6 +1156,7 @@ const handleSaveVenue = async (venueData: any) => {
           v-else-if="showDesktopDetail && selectedVenue"
           :key="`${selectedVenue.id}-${selectedVenue.mtrStation || ''}-${selectedVenue.walkingDistance || 0}`"
           :venue="selectedVenue"
+          :all-venues="venues"
           :onBack="() => { selectedVenue = null; showDesktopDetail = false; goBackFromVenue(); }"
           :onPrevVenue="goToPrevVenue"
           :onNextVenue="goToNextVenue"

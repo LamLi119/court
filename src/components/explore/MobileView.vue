@@ -32,6 +32,7 @@ const props = defineProps<{
   mode: 'map' | 'list';
   setMode: (m: 'map' | 'list') => void;
   venues: Venue[];
+  allVenues?: Venue[];
   selectedVenue: Venue | null;
   onSelectVenue: (v: Venue | null) => void;
   searchQuery: string;
@@ -416,6 +417,7 @@ const goNextVenueFromDetail = async () => {
     v-if="showDetailPage && selectedVenue"
     :key="`${selectedVenue.id}-${selectedVenue.mtrStation || ''}-${selectedVenue.walkingDistance || 0}`"
     :venue="selectedVenue"
+    :all-venues="allVenues"
     :onBack="() => { showDetailPage = false; props.onBackFromDetail?.(); }"
     :onPrevVenue="goPrevVenueFromDetail"
     :onNextVenue="goNextVenueFromDetail"

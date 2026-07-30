@@ -11,7 +11,7 @@ import FaqSection from '../seo/FaqSection.vue';
 import { countVenuesBySport, venueMatchesSportSlug } from '../../utils/seo';
 import { HK_DISTRICTS, getDistrictDisplayName, venueMatchesDistricts } from '../../utils/hkDistricts';
 
-type SportOption = { id: number; name: string; name_zh?: string | null; slug: string };
+type SportOption = { id: number; name: string; name_zh?: string | null; slug: string; sort_order?: number | null };
 
 const props = defineProps<{
   venues: Venue[];
@@ -80,7 +80,7 @@ const districtCount = HK_DISTRICTS.length;
 
 const sportVenueCounts = computed(() => countVenuesBySport(props.venues, props.sports));
 
-/** Selected sport for the district cards section — default to first (highest count) */
+/** Selected sport for the district cards section — default to first (admin sort_order) */
 const selectedSportSlug = ref('');
 watch(sportVenueCounts, (list) => {
   if (list.length && !list.some((s) => s.slug === selectedSportSlug.value)) {

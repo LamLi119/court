@@ -32,9 +32,10 @@ export type SportVenueCount = {
   name: string;
   name_zh?: string | null;
   count: number;
+  sort_order?: number | null;
 };
 
-type SportOption = { name: string; name_zh?: string | null; slug: string };
+type SportOption = { name: string; name_zh?: string | null; slug: string; sort_order?: number | null };
 
 export const HOME_TITLE_EN = `${BRAND} | Find Sports Courts Across All ${HK_DISTRICT_COUNT} Hong Kong Districts`;
 export const HOME_TITLE_ZH = `運動場地搜尋 全港${HK_DISTRICT_COUNT}區 80+場館 | ${BRAND}`;
@@ -65,10 +66,16 @@ export function countVenuesBySport(venues: Venue[], sports: SportOption[]): Spor
       slug: sport.slug,
       name: sport.name,
       name_zh: sport.name_zh,
+      sort_order: sport.sort_order ?? null,
       count: venues.filter((v) => venueMatchesSportSlug(v, sport.slug)).length,
     }))
     .filter((s) => s.count > 0)
-    .sort((a, b) => b.count - a.count);
+    .sort((a, b) => {
+      const ao = a.sort_order ?? 9999;
+      const bo = b.sort_order ?? 9999;
+      if (ao !== bo) return ao - bo;
+      return b.count - a.count;
+    });
 }
 
 function sportLabel(item: SportVenueCount, lang: 'en' | 'zh'): string {
@@ -251,8 +258,8 @@ function buildVenueBreadcrumbLd(
 }
 
 /** Meta description: venue SEO prose (hidden on-page) with short booking fallback. */
-export function getVenueDescription(venue: Venue, lang: 'en' | 'zh' = 'en'): string {
-  const rich = flattenVenueSeoForMeta(venue, lang, 320);
+export function getVenueDescription(venue: Venue, lang: 'en' | 'zh' = 'en', allVenues: Venue[] = []): string {
+  const rich = flattenVenueSeoForMeta(venue, lang, 320, allVenues);
   if (rich) return rich;
 
   const sport = getSportTypeLabel(venue, lang);
@@ -343,9 +350,9 @@ function getReadableCurrentUrl(): string {
 }
 
 /** Apply dynamic meta and OG tags for a venue (detail page). Call when venue is shown. */
-export function applyVenueSeo(venue: Venue, baseUrl: string, lang: 'en' | 'zh' = 'en'): void {
+export function applyVenueSeo(venue: Venue, baseUrl: string, lang: 'en' | 'zh' = 'en', allVenues: Venue[] = []): void {
   const title = getVenueTitle(venue, lang);
-  const description = getVenueDescription(venue, lang);
+  const description = getVenueDescription(venue, lang, allVenues);
   const keywords = getVenueKeywords(venue, lang);
   const image = (venue.images && venue.images[0]) || '';
   const pageUrl =

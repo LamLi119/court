@@ -66,6 +66,7 @@ function sanitizeDescription(html: string | undefined): string {
 
 const props = defineProps<{
   venue: Venue;
+  allVenues?: Venue[];
   onBack: () => void;
   onPrevVenue?: () => void;
   onNextVenue?: () => void;
@@ -240,11 +241,17 @@ const openSocialLink = (url: string) => {
 const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
 onMounted(() => {
-  applyVenueSeo(props.venue, baseUrl, props.language);
+  applyVenueSeo(props.venue, baseUrl, props.language, props.allVenues || []);
 });
 watch(() => props.venue, (v) => {
-  if (v) applyVenueSeo(v, baseUrl, props.language);
+  if (v) applyVenueSeo(v, baseUrl, props.language, props.allVenues || []);
 }, { immediate: true });
+watch(() => props.allVenues, (allVenues) => {
+  if (props.venue) applyVenueSeo(props.venue, baseUrl, props.language, allVenues || []);
+}, { deep: true });
+watch(() => props.language, (language) => {
+  if (props.venue) applyVenueSeo(props.venue, baseUrl, language, props.allVenues || []);
+});
 onUnmounted(() => {
   resetSeoToDefault();
 });
@@ -1048,11 +1055,13 @@ watch(
 
     <VenueSeoSections
       :venue="venue"
+      :all-venues="allVenues"
       :language="language"
       :dark-mode="darkMode"
       :t="t"
       :can-see-special-offer="canSeeSpecialOffer"
       :sanitize-description="sanitizeDescription"
+      :show-seo-blocks="false"
     />
 
     <!-- Mobile: fixed bar – price + Join membership -->

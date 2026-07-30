@@ -251,8 +251,8 @@ function buildVenueBreadcrumbLd(
 }
 
 /** Meta description: venue SEO prose (hidden on-page) with short booking fallback. */
-export function getVenueDescription(venue: Venue, lang: 'en' | 'zh' = 'en'): string {
-  const rich = flattenVenueSeoForMeta(venue, lang, 320);
+export function getVenueDescription(venue: Venue, lang: 'en' | 'zh' = 'en', allVenues: Venue[] = []): string {
+  const rich = flattenVenueSeoForMeta(venue, lang, 320, allVenues);
   if (rich) return rich;
 
   const sport = getSportTypeLabel(venue, lang);
@@ -343,9 +343,9 @@ function getReadableCurrentUrl(): string {
 }
 
 /** Apply dynamic meta and OG tags for a venue (detail page). Call when venue is shown. */
-export function applyVenueSeo(venue: Venue, baseUrl: string, lang: 'en' | 'zh' = 'en'): void {
+export function applyVenueSeo(venue: Venue, baseUrl: string, lang: 'en' | 'zh' = 'en', allVenues: Venue[] = []): void {
   const title = getVenueTitle(venue, lang);
-  const description = getVenueDescription(venue, lang);
+  const description = getVenueDescription(venue, lang, allVenues);
   const keywords = getVenueKeywords(venue, lang);
   const image = (venue.images && venue.images[0]) || '';
   const pageUrl =

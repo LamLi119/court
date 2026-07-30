@@ -79,7 +79,7 @@ onUnmounted(removeFaqJsonLd);
           >+</span>
         </summary>
         <p
-          class="mt-3 text-sm leading-relaxed"
+          class="mt-3 text-sm leading-relaxed whitespace-pre-line"
           :class="darkMode ? 'text-gray-400' : 'text-gray-600'"
         >
           {{ item.a }}

@@ -58,7 +58,7 @@ function toggleLanguage() {
   <!-- Landing page footer (dark, 3-column layout) -->
   <footer
     v-if="variant === 'landing'"
-    class="w-full bg-[#0f172a] text-gray-300 border-t border-gray-800"
+    class="w-full bg-gray-950 text-gray-300 border-t border-gray-800"
   >
     <div class="w-full max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-12">
       <div class="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">

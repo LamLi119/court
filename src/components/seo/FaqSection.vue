@@ -57,7 +57,7 @@ onUnmounted(removeFaqJsonLd);
   >
     <h2
       class="text-xl md:text-2xl font-black tracking-tight mb-4 md:mb-6"
-      :class="darkMode ? 'text-white' : 'text-gray-900'"
+      :class="darkMode ? 'text-white' : 'text-gray-950'"
     >
       {{ resolvedHeading }}
     </h2>

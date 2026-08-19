@@ -7,6 +7,7 @@ import axios from 'axios';
 import { Storage } from '@google-cloud/storage';
 import { getCourtsFormConfig, submitCourtsForm } from './webflowCourtsForm.js';
 import { buildSitemapXml } from '../lib/sitemap.js';
+import { buildHeroStaticMapUrl } from '../lib/heroStaticMap.js';
 import { notifyIndexNowForVenue, submitIndexNowUrls, venuePublicUrl } from '../lib/indexnow.js';
 import { loadPublicCatalog } from '../lib/catalogData.js';
 import { buildOkfBundle } from '../lib/okf.js';
@@ -26,6 +27,8 @@ const adminSessions = new Map();
 const PUBLIC_EVENTS_CACHE_TTL_MS = 1000 * 90; // 90s short cache
 const publicEventsCache = new Map();
 const publicEventsInflight = new Map();
+const HERO_MAP_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+let heroMapCache = { buffer: null, fetchedAt: 0, etag: null };
 const PUBLIC_EVENTS_PREWARM_QS = [
   'order=ASC&tab=upcoming&page=1&pageSize=8',
 ];
@@ -988,6 +991,78 @@ app.get('/api/image-proxy', async (req, res) => {
   } catch (err) {
     const msg = err?.message || 'Proxy failed';
     return res.status(502).json({ error: msg });
+  }
+});
+
+/** Cached Hong Kong Static Map for landing hero (one Google request per cache window). */
+app.get('/api/hero-map', async (_req, res) => {
+  try {
+    const apiKey = (process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '').trim();
+    if (!apiKey) {
+      return res.status(503).type('text/plain').send('Hero map unavailable');
+    }
+
+    const now = Date.now();
+    if (heroMapCache.buffer && (now - heroMapCache.fetchedAt) < HERO_MAP_CACHE_TTL_MS) {
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+      if (heroMapCache.etag) res.setHeader('ETag', heroMapCache.etag);
+      res.setHeader('X-Hero-Map-Cache', 'hit');
+      return res.status(200).send(heroMapCache.buffer);
+    }
+
+    const db = getPool();
+    const [rows] = await db.execute(
+      'SELECT id, coordinates, membership_enabled, mtrStation, mtr_station, address FROM venues ORDER BY id ASC',
+    );
+    const venues = (rows || []).map((row) => {
+      let coordinates = row.coordinates;
+      if (typeof coordinates === 'string') {
+        try {
+          coordinates = JSON.parse(coordinates);
+        } catch {
+          coordinates = null;
+        }
+      }
+      return {
+        id: row.id,
+        coordinates,
+        membership_enabled: Boolean(row.membership_enabled),
+        mtrStation: row.mtrStation || row.mtr_station,
+        address: row.address,
+      };
+    });
+
+    const mapUrl = buildHeroStaticMapUrl(venues, apiKey);
+    if (!mapUrl) {
+      return res.status(404).type('text/plain').send('No hero map pins');
+    }
+
+    const response = await axios.get(mapUrl, {
+      responseType: 'arraybuffer',
+      timeout: 15000,
+      validateStatus: (status) => status >= 200 && status < 300,
+    });
+
+    const contentType = String(response.headers?.['content-type'] || '');
+    if (!contentType.startsWith('image/')) {
+      const preview = Buffer.from(response.data || '').toString('utf8').slice(0, 240);
+      console.warn('[hero-map] Google returned non-image response:', preview);
+      return res.status(502).type('text/plain').send('Hero map fetch failed');
+    }
+
+    const buffer = Buffer.from(response.data);
+    const etag = `"hero-map-${crypto.createHash('sha1').update(buffer).digest('hex')}"`;
+    heroMapCache = { buffer, fetchedAt: now, etag };
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    res.setHeader('ETag', etag);
+    res.setHeader('X-Hero-Map-Cache', 'miss');
+    return res.status(200).send(buffer);
+  } catch (err) {
+    console.warn('[hero-map]', err?.message || err);
+    return res.status(502).type('text/plain').send('Hero map unavailable');
   }
 });
 

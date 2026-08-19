@@ -7,6 +7,8 @@ import {
   getDistrictDisplayName,
   type HkRegion,
 } from '../../utils/hkDistricts';
+import { HERO_MAP_IMAGE_URL } from '../../utils/heroStaticMap';
+import { courtApiUrl } from '../../utils/courtApiUrl';
 
 const props = defineProps<{
   language: Language;
@@ -15,7 +17,15 @@ const props = defineProps<{
   selectedDistricts: string[];
   sportSlug: string;
   defaultSportSlug: string;
+  darkMode?: boolean;
 }>();
+
+const showHeroMap = ref(true);
+const heroMapSrc = courtApiUrl(HERO_MAP_IMAGE_URL);
+
+function handleHeroMapError() {
+  showHeroMap.value = false;
+}
 
 const emit = defineEmits<{
   'update:selectedDistricts': [value: string[]];
@@ -126,11 +136,33 @@ watch(
 </script>
 
 <template>
-  <section class="landing-hero relative overflow-hidden">
+  <section
+    class="landing-hero relative overflow-hidden"
+    :style="{
+      '--landing-hero-fade-to': props.darkMode ? '#030712' : '#ffffff',
+      '--landing-hero-fade-soft': props.darkMode ? 'rgba(3, 7, 18, 0.8)' : 'rgba(255, 255, 255, 0.4)',
+    }"
+  >
     <div class="absolute inset-0 landing-hero-bg" aria-hidden="true" />
-    <div class="absolute inset-0 bg-black/20" aria-hidden="true" />
+    <img
+      v-if="showHeroMap"
+      :src="heroMapSrc"
+      alt=""
+      class="absolute inset-0 h-full w-full object-cover pointer-events-none select-none landing-hero-map"
+      loading="eager"
+      fetchpriority="high"
+      decoding="async"
+      aria-hidden="true"
+      @error="handleHeroMapError"
+    />
+    <div
+      class="absolute inset-0 landing-hero-overlay pointer-events-none"
+      :class="props.darkMode ? 'landing-hero-overlay--dark' : 'landing-hero-overlay--light'"
+      aria-hidden="true"
+    />
+    <div class="absolute inset-x-0 bottom-0 h-32 md:h-40 landing-hero-fade" aria-hidden="true" />
 
-    <div class="relative w-full max-w-7xl mx-auto px-4 py-10 md:py-24 lg:py-28">
+    <div class="relative z-10 w-full max-w-7xl mx-auto px-4 py-10 md:py-24 lg:py-28">
       <!-- Mobile: search on top, then headline -->
       <div class="md:hidden w-full max-w-md mx-auto space-y-6">
         <div class="text-center px-1 mb-6">
@@ -322,10 +354,44 @@ watch(
 
 <style scoped>
 .landing-hero-bg {
-  background-color: #0f172a;
+  background-color: #1a2f22;
   background-image:
-    radial-gradient(ellipse 80% 60% at 20% 40%, rgba(0, 122, 103, 0.5), transparent),
-    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(217, 249, 157, 0.18), transparent),
-    radial-gradient(ellipse 50% 40% at 60% 80%, rgba(0, 122, 103, 0.35), transparent);
+    radial-gradient(ellipse 95% 75% at 12% 18%, rgba(90, 140, 78, 0.55), transparent 62%),
+    radial-gradient(ellipse 55% 50% at 88% 10%, rgba(232, 196, 122, 0.32), transparent 58%),
+    radial-gradient(ellipse 70% 60% at 78% 42%, rgba(163, 177, 138, 0.22), transparent 60%),
+    radial-gradient(ellipse 80% 65% at 28% 78%, rgba(45, 90, 58, 0.7), transparent 68%),
+    radial-gradient(ellipse 50% 45% at 62% 88%, rgba(132, 169, 140, 0.28), transparent 55%),
+    linear-gradient(180deg, rgba(26, 47, 34, 0.15) 0%, rgba(12, 24, 18, 0.55) 100%);
+}
+
+.landing-hero-map {
+  z-index: 1;
+}
+
+.landing-hero-overlay {
+  z-index: 2;
+}
+
+.landing-hero-overlay--light {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 42%, rgba(15, 23, 42, 0.45) 0%, rgba(15, 23, 42, 0.28) 55%, rgba(15, 23, 42, 0.12) 100%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.18) 0%, rgba(15, 23, 42, 0.32) 100%);
+}
+
+.landing-hero-overlay--dark {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 42%, rgba(3, 7, 18, 0.62) 0%, rgba(3, 7, 18, 0.45) 55%, rgba(3, 7, 18, 0.28) 100%),
+    linear-gradient(180deg, rgba(3, 7, 18, 0.35) 0%, rgba(3, 7, 18, 0.5) 100%);
+}
+
+.landing-hero-fade {
+  z-index: 3;
+  background: linear-gradient(
+    to bottom,
+    rgba(15, 23, 42, 0) 0%,
+    rgba(15, 23, 42, 0.22) 42%,
+    var(--landing-hero-fade-soft) 78%,
+    var(--landing-hero-fade-to) 100%
+  );
 }
 </style>

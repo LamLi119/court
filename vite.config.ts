@@ -51,7 +51,7 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['green-G.svg', 'placeholder.svg', 'venues-bootstrap.json'],
+        includeAssets: ['green-G.svg', 'black_G.png', 'placeholder.svg', 'venues-bootstrap.json'],
         manifest: {
           name: 'Courts | Find Sports Courts in Hong Kong',
           short_name: 'Courts',

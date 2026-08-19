@@ -292,7 +292,7 @@ function goNextPartnership() {
       @search="handleHeroSearch"
     />
 
-    <section class="w-full py-10 md:py-14" :class="darkMode ? 'bg-gray-950' : 'bg-white'">
+    <section class="relative z-10 w-full py-10 md:py-14 -mt-px" :class="darkMode ? 'bg-gray-950' : 'bg-white'">
       <div class="w-full px-4 md:px-6 max-w-7xl mx-auto">
         <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 md:mb-8">
           <div>
@@ -693,6 +693,7 @@ function goNextPartnership() {
 
 <style scoped>
 .landing-page-shell {
+  border:none;
   background-image:
     radial-gradient(ellipse 80% 60% at 20% 8%, rgba(0, 122, 103, 0.32), transparent 55%),
     radial-gradient(ellipse 60% 50% at 80% 4%, rgba(217, 249, 157, 0.12), transparent 45%),

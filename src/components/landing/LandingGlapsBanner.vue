@@ -9,7 +9,7 @@
     >
       <source src="/glaps-bg-video.mp4" type="video/mp4" />
     </video>
-    <div class="absolute inset-0 bg-black/65" aria-hidden="true" />
+    <div class="absolute inset-0 bg-black/10" aria-hidden="true" />
 
     <div class="relative z-10 mx-auto w-full max-w-[1160px] px-6 py-14 md:px-10 md:py-20">
       <div class="max-w-[920px] text-left">
@@ -26,13 +26,6 @@
             WITH <span class="glaps-outline">ZERO EFFORT</span>
           </span>
         </h2>
-
-        <p class="glaps-body">
-          Upload the full match. Glaps finds the winners, ranks them by hype, crops them to
-          <strong>9:16 with the ball dead-center</strong>,
-          and files every clip to the player who hit it.
-          <strong>Post-ready before you leave the parking lot.</strong>
-        </p>
 
         <a
           href="https://glaps.ai/"
@@ -149,6 +142,10 @@
 }
 
 @media (max-width: 640px) {
+  .glaps-headline {
+    font-size: clamp(56px, 9.5vw, 148px);
+  }
+
   .glaps-btn {
     display: flex;
     width: 100%;

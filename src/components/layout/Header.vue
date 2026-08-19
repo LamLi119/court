@@ -73,8 +73,8 @@ function setLangFromMenu(lang: Language) {
 
 <template>
   <header :class="[
-    'sticky top-0 z-[60] w-full backdrop-blur-md border-b shadow-sm',
-    darkMode ? 'bg-gray-900/80 border-gray-800' : 'bg-white/80 border-gray-200'
+    'sticky top-0 z-[60] w-full backdrop-blur-md shadow-sm',
+    darkMode ? 'bg-gray-900/80' : 'bg-white/80'
   ]">
     <div class="w-full max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
       <div class="flex items-center gap-3 md:gap-8 min-w-0">

@@ -51,7 +51,7 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['green-G.svg', 'placeholder.svg', 'venues-bootstrap.json'],
+        includeAssets: ['green-G.svg', 'black_G.png', 'placeholder.svg', 'hero-map2.png', 'venues-bootstrap.json'],
         manifest: {
           name: 'Courts | Find Sports Courts in Hong Kong',
           short_name: 'Courts',
@@ -75,6 +75,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webp}'],
+          globIgnores: ['**/hero-map.png'],
           navigateFallback: '/index.html',
           // Never serve index.html for API routes, hashed assets, or static file URLs.
           navigateFallbackDenylist: [/^\/api/, /^\/assets\//, /\/[^/?]+\.[^/]+$/],

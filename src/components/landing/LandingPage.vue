@@ -5,6 +5,7 @@ import LandingHero from './LandingHero.vue';
 import CourtCard from '../explore/CourtCard.vue';
 import DesktopView from '../explore/DesktopView.vue';
 import MobileView from '../explore/MobileView.vue';
+import LandingGlapsBanner from './LandingGlapsBanner.vue';
 import LandingCta from './LandingCta.vue';
 import AppFooter from '../layout/AppFooter.vue';
 import FaqSection from '../seo/FaqSection.vue';
@@ -285,12 +286,13 @@ function goNextPartnership() {
       :selectedDistricts="heroDistricts"
       :sportSlug="heroSport"
       :defaultSportSlug="defaultHeroSportSlug"
+      :dark-mode="darkMode"
       @update:selectedDistricts="heroDistricts = $event"
       @update:sportSlug="heroSport = $event"
       @search="handleHeroSearch"
     />
 
-    <section class="w-full py-10 md:py-14" :class="darkMode ? 'bg-gray-900' : 'bg-white'">
+    <section class="relative z-10 w-full py-10 md:py-14 -mt-px" :class="darkMode ? 'bg-gray-950' : 'bg-white'">
       <div class="w-full px-4 md:px-6 max-w-7xl mx-auto">
         <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 md:mb-8">
           <div>
@@ -398,8 +400,8 @@ function goNextPartnership() {
 
     <section
       id="explore-section"
-      class="w-full pt-10 md:py-14"
-      :class="darkMode ? 'bg-gray-50 dark:bg-gray-950' : 'bg-gray-50'"
+      class="w-full pt-10 pb-10 md:py-14"
+      :class="darkMode ? 'bg-gray-50 dark:bg-gray-900' : 'bg-gray-50'"
     >
     <div class="w-full px-4 md:px-6 max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6 md:mb-8">
       <div>
@@ -519,6 +521,8 @@ function goNextPartnership() {
       </div>
     </section>
 
+    <LandingGlapsBanner />
+
     <LandingCta
       :t="t"
       :darkMode="darkMode"
@@ -526,7 +530,7 @@ function goNextPartnership() {
 
     <section
       class="w-full py-10 md:py-14"
-      :class="darkMode ? 'bg-gray-900' : 'bg-white'"
+      :class="darkMode ? 'bg-gray-950' : 'bg-white'"
       :aria-label="t('landingSeoHeading')"
     >
       <div class="w-full px-4 md:px-6 max-w-7xl mx-auto space-y-8">
@@ -664,7 +668,7 @@ function goNextPartnership() {
 
     <section
       class="w-full py-10 md:py-14"
-      :class="darkMode ? 'bg-gray-950' : 'bg-gray-50'"
+      :class="darkMode ? 'bg-gray-900' : 'bg-gray-50'"
     >
     <div class="w-full px-4 md:px-6 max-w-7xl mx-auto">
         <FaqSection
@@ -686,3 +690,15 @@ function goNextPartnership() {
     />
   </div>
 </template>
+
+<style scoped>
+.landing-page-shell {
+  border:none;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 8%, rgba(0, 122, 103, 0.32), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 80% 4%, rgba(217, 249, 157, 0.12), transparent 45%),
+    radial-gradient(ellipse 50% 40% at 60% 16%, rgba(0, 122, 103, 0.2), transparent 42%);
+  background-repeat: no-repeat;
+  background-size: 100% 38rem;
+}
+</style>

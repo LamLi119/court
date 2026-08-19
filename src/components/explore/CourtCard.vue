@@ -211,11 +211,11 @@ function navigateVenue(e: MouseEvent, preferDetail = true) {
       <span v-if="venue.membership_enabled" class="absolute top-2 left-2 rounded-md px-2 py-1 text-[11px] font-bold text-white bg-[#007a67] shadow-md z-[1] pointer-events-none" :title="t('specialOffer')">
         {{ t('specialOffer') }}
       </span>
-      <div class="absolute top-2 right-12 z-10">
+      <div class="absolute top-2 right-20 sm:right-15 z-10">
         <button
           type="button"
           :aria-label="t('share')"
-          class="p-3 mr-2 rounded-full shadow-lg transition-all active:scale-90 rounded-[999px]"
+          class="p-3 rounded-full shadow-lg transition-all active:scale-90 rounded-[999px]"
           :class="darkMode ? 'text-gray-300 hover:bg-gray-700 bg-gray-800/90' : 'bg-white/90 text-gray-600 hover:bg-gray-100'"
           @click.stop="handleShare"
         >

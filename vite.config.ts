@@ -75,6 +75,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webp}'],
+          globIgnores: ['**/hero-map.png'],
           navigateFallback: '/index.html',
           // Never serve index.html for API routes, hashed assets, or static file URLs.
           navigateFallbackDenylist: [/^\/api/, /^\/assets\//, /\/[^/?]+\.[^/]+$/],

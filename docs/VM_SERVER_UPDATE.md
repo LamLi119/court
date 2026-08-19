@@ -8,14 +8,16 @@ Frontend (Vercel / local) is separate — see [DEPLOY_VERCEL.md](../DEPLOY_VERCE
 
 ## Layout on the VM
 
-| | Staging (dev) | Production |
-|---|---------------|------------|
-| **systemd service** | `courts-api-staging` | `courts-api-prod` |
-| **Port** | 3002 | 3001 |
-| **Env file** | `/etc/courts/staging.env` | `/etc/courts/prod.env` |
-| **Code folder** | `/opt/courts-new` (check your unit file) | same folder |
-| **Public URL** | `https://courts.api.theground.io/staging/api/...` | `https://courts.api.theground.io/api/...` |
-| **Database** | `courts_staging` (at now is the same db, use `courts-db`) | `courts-db` |
+
+|                     | Staging (dev)                                             | Production                                |
+| ------------------- | --------------------------------------------------------- | ----------------------------------------- |
+| **systemd service** | `courts-api-staging`                                      | `courts-api-prod`                         |
+| **Port**            | 3002                                                      | 3001                                      |
+| **Env file**        | `/etc/courts/staging.env`                                 | `/etc/courts/prod.env`                    |
+| **Code folder**     | `/opt/courts-new` (check your unit file)                  | same folder                               |
+| **Public URL**      | `https://courts.api.theground.io/staging/api/...`         | `https://courts.api.theground.io/api/...` |
+| **Database**        | `courts_staging` (at now is the same db, use `courts-db`) | `courts-db`                               |
+
 
 Both services run the same repo (`server/run-local.js`) with different env files. Restarting one does **not** update the other.
 
@@ -48,6 +50,8 @@ sudo systemctl restart courts-api-prod
 
 ---
 
+
+
 ## Update staging only (dev server)
 
 Use this for testing before touching production.
@@ -58,13 +62,15 @@ ssh team@instance-courts   # or gcloud compute ssh ...
 cd /opt/courts-new         # use WorkingDirectory from above
 
 git fetch
-git checkout Main/SEO  # e.g. dev, or main for a staging test
+git checkout dev  # e.g. dev, or main for a staging test
 git pull
 
 npm ci
 
 sudo systemctl restart courts-api-staging
 ```
+
+
 
 ### Verify staging
 
@@ -73,6 +79,8 @@ sudo systemctl status courts-api-staging
 curl -s http://127.0.0.1:3002/api/sports | head
 curl -s https://courts.api.theground.io/staging/api/sports | head
 ```
+
+
 
 ### Logs
 
@@ -84,6 +92,8 @@ sudo journalctl -u courts-api-staging -f
 **Do not** run `restart courts-api-prod` unless you intend to update production.
 
 ---
+
+
 
 ## Update production only
 
@@ -99,6 +109,8 @@ npm ci
 sudo systemctl restart courts-api-prod
 ```
 
+
+
 ### Verify production
 
 ```bash
@@ -106,6 +118,8 @@ sudo systemctl status courts-api-prod
 curl -s http://127.0.0.1:3001/api/sports | head
 curl -s https://courts.api.theground.io/api/sports | head
 ```
+
+
 
 ### Logs
 
@@ -117,6 +131,8 @@ sudo journalctl -u courts-api-prod -f
 **Do not** restart staging unless you want staging updated too.
 
 ---
+
+
 
 ## Update both (rare)
 
@@ -131,6 +147,8 @@ sudo systemctl restart courts-api-prod
 ```
 
 ---
+
+
 
 ## Change env only (no code pull)
 
@@ -147,6 +165,8 @@ sudo systemctl restart courts-api-staging
 sudo nano /etc/courts/prod.env
 sudo systemctl restart courts-api-prod
 ```
+
+
 
 ### Required env vars (each file)
 
@@ -192,6 +212,8 @@ Do **not** set `PROXY_SECRET` when the browser calls the API directly (causes `4
 
 ---
 
+
+
 ## Recommended workflow
 
 1. Push changes to GitHub from your laptop.
@@ -204,22 +226,28 @@ Do **not** set `PROXY_SECRET` when the browser calls the API directly (causes `4
 
 ---
 
+
+
 ## Troubleshooting
 
-| Symptom | Check |
-|---------|--------|
-| Service won’t start | `sudo journalctl -u courts-api-staging -n 30` |
-| `EADDRINUSE :3002` on prod | `prod.env` has `PORT=3001`, not `3002` |
-| 502 Bad Gateway (OPTIONS/PUT) | Prod API down — `sudo systemctl status courts-api-prod`; nothing on `:3001` |
-| Prod not updated after `git pull` | `WorkingDirectory` still points at old folder — use `/opt/courts-new` |
-| `CHDIR` error | `WorkingDirectory` in systemd doesn’t exist — fix path |
-| HTTPS 404 | nginx config — `/staging/` → 3002, `/` → 3001 |
-| HTTPS timeout | VM network tag `courts-api` + firewall 80/443 |
-| `401` from API | Remove `PROXY_SECRET` from env file |
-| Save OK but `images: "[]"` | Add `GCS_BUCKET_NAME=courts-image-bucket` to env; check `journalctl` for `GCS upload error` |
-| `Image upload failed` / stream destroyed | Remove stale `api/*.json` in code folder; use VM service account; check bucket permissions |
-| `MYSQL_PASSWORD: command not found` | Quote password in env file: `MYSQL_PASSWORD='...'` |
-| `Image upload failed` on save | VM service account needs **Storage Object Creator** on `courts-image-bucket` |
+
+| Symptom                                  | Check                                                                                       |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Service won’t start                      | `sudo journalctl -u courts-api-staging -n 30`                                               |
+| `EADDRINUSE :3002` on prod               | `prod.env` has `PORT=3001`, not `3002`                                                      |
+| 502 Bad Gateway (OPTIONS/PUT)            | Prod API down — `sudo systemctl status courts-api-prod`; nothing on `:3001`                 |
+| Prod not updated after `git pull`        | `WorkingDirectory` still points at old folder — use `/opt/courts-new`                       |
+| `CHDIR` error                            | `WorkingDirectory` in systemd doesn’t exist — fix path                                      |
+| HTTPS 404                                | nginx config — `/staging/` → 3002, `/` → 3001                                               |
+| HTTPS timeout                            | VM network tag `courts-api` + firewall 80/443                                               |
+| `401` from API                           | Remove `PROXY_SECRET` from env file                                                         |
+| Save OK but `images: "[]"`               | Add `GCS_BUCKET_NAME=courts-image-bucket` to env; check `journalctl` for `GCS upload error` |
+| `Image upload failed` / stream destroyed | Remove stale `api/*.json` in code folder; use VM service account; check bucket permissions  |
+| `MYSQL_PASSWORD: command not found`      | Quote password in env file: `MYSQL_PASSWORD='...'`                                          |
+| `Image upload failed` on save            | VM service account needs **Storage Object Creator** on `courts-image-bucket`                |
+
+
+
 
 ### Service status (both)
 
@@ -230,16 +258,20 @@ sudo ss -tlnp | grep -E '3001|3002'
 
 ---
 
+
+
 ## Point the frontend at staging vs prod
 
 Not part of the VM update, but for reference:
 
-| Where | `VITE_API_URL` |
-|-------|----------------|
-| Local dev → staging | `https://courts.api.theground.io/staging` |
-| Local dev → prod | `https://courts.api.theground.io` |
-| Local dev → local | `http://localhost:3001` (+ `npm run server`) |
-| Vercel Preview | `https://courts.api.theground.io/staging` |
-| Vercel Production | `https://courts.api.theground.io` |
+
+| Where               | `VITE_API_URL`                               |
+| ------------------- | -------------------------------------------- |
+| Local dev → staging | `https://courts.api.theground.io/staging`    |
+| Local dev → prod    | `https://courts.api.theground.io`            |
+| Local dev → local   | `http://localhost:3001` (+ `npm run server`) |
+| Vercel Preview      | `https://courts.api.theground.io/staging`    |
+| Vercel Production   | `https://courts.api.theground.io`            |
+
 
 Restart `npm run dev` or **Redeploy** Vercel after changing env vars.

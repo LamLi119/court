@@ -8,6 +8,8 @@ import {
   type HkRegion,
 } from '../../utils/hkDistricts';
 
+const HERO_MAP_IMAGE_URL = '/hero-map2.png';
+
 const props = defineProps<{
   language: Language;
   t: (key: string) => string;
@@ -15,7 +17,15 @@ const props = defineProps<{
   selectedDistricts: string[];
   sportSlug: string;
   defaultSportSlug: string;
+  darkMode?: boolean;
 }>();
+
+const showHeroMap = ref(true);
+const heroMapSrc = HERO_MAP_IMAGE_URL;
+
+function handleHeroMapError() {
+  showHeroMap.value = false;
+}
 
 const emit = defineEmits<{
   'update:selectedDistricts': [value: string[]];
@@ -126,11 +136,35 @@ watch(
 </script>
 
 <template>
-  <section class="landing-hero relative overflow-hidden">
+  <section
+    class="landing-hero relative overflow-hidden min-h-[30rem] md:min-h-0"
+    :style="{
+      '--landing-hero-fade-to': props.darkMode ? '#030712' : '#ffffff',
+      backgroundColor: props.darkMode ? '#030712' : '#ffffff',
+    }"
+  >
     <div class="absolute inset-0 landing-hero-bg" aria-hidden="true" />
-    <div class="absolute inset-0 bg-black/20" aria-hidden="true" />
+    <img
+      v-if="showHeroMap"
+      :src="heroMapSrc"
+      alt=""
+      width="1280"
+      height="720"
+      class="absolute inset-0 object-cover pointer-events-none select-none landing-hero-map"
+      loading="eager"
+      fetchpriority="high"
+      decoding="async"
+      aria-hidden="true"
+      @error="handleHeroMapError"
+    />
+    <div
+      class="absolute inset-0 landing-hero-overlay pointer-events-none"
+      :class="props.darkMode ? 'landing-hero-overlay--dark' : 'landing-hero-overlay--light'"
+      aria-hidden="true"
+    />
+    <div class="absolute inset-x-0 bottom-0 h-40 md:h-48 landing-hero-fade" aria-hidden="true" />
 
-    <div class="relative w-full max-w-7xl mx-auto px-4 py-10 md:py-24 lg:py-28">
+    <div class="relative z-10 w-full max-w-7xl mx-auto px-4 pt-12 pb-16 md:py-24 lg:py-28">
       <!-- Mobile: search on top, then headline -->
       <div class="md:hidden w-full max-w-md mx-auto space-y-6">
         <div class="text-center px-1 mb-6">
@@ -322,10 +356,67 @@ watch(
 
 <style scoped>
 .landing-hero-bg {
-  background-color: #0f172a;
+  border:none;
+  background-color: #1a2f22;
   background-image:
-    radial-gradient(ellipse 80% 60% at 20% 40%, rgba(0, 122, 103, 0.5), transparent),
-    radial-gradient(ellipse 60% 50% at 80% 20%, rgba(217, 249, 157, 0.18), transparent),
-    radial-gradient(ellipse 50% 40% at 60% 80%, rgba(0, 122, 103, 0.35), transparent);
+    radial-gradient(ellipse 95% 75% at 12% 18%, rgba(90, 140, 78, 0.55), transparent 62%),
+    radial-gradient(ellipse 55% 50% at 88% 10%, rgba(232, 196, 122, 0.32), transparent 58%),
+    radial-gradient(ellipse 70% 60% at 78% 42%, rgba(163, 177, 138, 0.22), transparent 60%),
+    radial-gradient(ellipse 80% 65% at 28% 78%, rgba(45, 90, 58, 0.7), transparent 68%),
+    radial-gradient(ellipse 50% 45% at 62% 88%, rgba(132, 169, 140, 0.28), transparent 55%),
+    linear-gradient(180deg, rgba(26, 47, 34, 0.15) 0%, rgba(12, 24, 18, 0.55) 100%);
+}
+
+.landing-hero-map {
+  z-index: 1;
+  border:none;
+  width: calc(100% + 6px);
+  height: calc(100% + 6px);
+}
+
+.landing-hero-overlay {
+  z-index: 2;
+  border:none;
+}
+
+.landing-hero-overlay--light {
+  border: none;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 42%, rgba(15, 23, 42, 0.45) 0%, rgba(15, 23, 42, 0.28) 55%, rgba(15, 23, 42, 0.12) 100%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.18) 0%, rgba(15, 23, 42, 0.28) 50%, rgba(15, 23, 42, 0.32) 100%);
+}
+
+.landing-hero-overlay--dark {
+  border: none;
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 42%, rgba(3, 7, 18, 0.62) 0%, rgba(3, 7, 18, 0.45) 55%, rgba(3, 7, 18, 0.28) 100%),
+    linear-gradient(180deg, rgba(3, 7, 18, 0.35) 0%, rgba(3, 7, 18, 0.44) 50%, rgba(3, 7, 18, 0.5) 100%);
+}
+
+.landing-hero-fade {
+  z-index: 3;
+  border: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(15, 23, 42, 0) 0%,
+      rgba(15, 23, 42, 0.05) 22%,
+      rgba(15, 23, 42, 0.1) 40%,
+      rgba(15, 23, 42, 0.12) 52%,
+      rgba(15, 23, 42, 0.08) 64%,
+      rgba(15, 23, 42, 0.03) 74%,
+      rgba(15, 23, 42, 0) 82%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 0%,
+      color-mix(in srgb, var(--landing-hero-fade-to) 18%, transparent) 38%,
+      color-mix(in srgb, var(--landing-hero-fade-to) 42%, transparent) 52%,
+      color-mix(in srgb, var(--landing-hero-fade-to) 62%, transparent) 64%,
+      color-mix(in srgb, var(--landing-hero-fade-to) 78%, transparent) 74%,
+      color-mix(in srgb, var(--landing-hero-fade-to) 90%, transparent) 84%,
+      color-mix(in srgb, var(--landing-hero-fade-to) 96%, transparent) 92%,
+      var(--landing-hero-fade-to) 100%
+    );
 }
 </style>

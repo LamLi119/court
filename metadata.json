@@ -1,5 +1,5 @@
 {
-  "name": "The Ground Court Finder",
+  "name": "Courts by The Ground",
   "description": "A comprehensive directory for finding and booking pickleball venues in Hong Kong with bilingual support and admin management.",
   "requestFramePermissions": [
     "geolocation"

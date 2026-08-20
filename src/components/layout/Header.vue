@@ -9,7 +9,7 @@ const route = useRoute();
 const isHome = computed(() => route.name === 'home');
 const mobileNavOpen = ref(false);
 
-const logoUrl = `${import.meta.env.BASE_URL}green-G.svg`;
+const logoUrl = `${import.meta.env.BASE_URL}courts-logo.png`;
 
 const props = defineProps<{
   language: Language;
@@ -81,7 +81,7 @@ function setLangFromMenu(lang: Language) {
         <a href="/" class="flex items-center gap-2.5 cursor-pointer group shrink-0 no-underline" @click.prevent="goHome">
           <div
             class="w-10 h-10 transition-transform duration-300 group-hover:rotate-12 group-active:scale-90 flex items-center justify-center">
-            <img :src="logoUrl" alt="Courts by The Ground" class="w-10 h-10" />
+            <img :src="logoUrl" alt="Courts" class="w-10 h-10" />
           </div>
           <span class="hidden sm:block text-[20px] font-[900] tracking-tighter text-[#007a67]">
             Courts

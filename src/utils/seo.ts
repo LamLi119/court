@@ -43,7 +43,7 @@ const DEFAULT_TITLE = HOME_TITLE_EN;
 const DEFAULT_DESCRIPTION =
   `Search sports courts across all ${HK_DISTRICT_COUNT} Hong Kong districts. Filter by district and sport, compare prices and amenities, and book in minutes. 搜尋香港18區運動場地。`;
 /** Default share preview image (home page). Use absolute URL so crawlers see it when sharing site URL. */
-const DEFAULT_OG_IMAGE_PATH = '/gray-G.png';
+const DEFAULT_OG_IMAGE_PATH = '/courts-logo.png';
 
 /** Whether a venue supports the given sport slug (matches explore filter logic). */
 export function venueMatchesSportSlug(venue: Venue, sportSlug: string): boolean {
@@ -161,7 +161,7 @@ function buildOrganizationLd(homeUrl: string): Record<string, unknown> {
     '@type': 'Organization',
     name: BRAND,
     url: base.endsWith('/') ? base : `${base}/`,
-    logo: `${base.replace(/\/$/, '')}/gray-G.png`,
+    logo: `${base.replace(/\/$/, '')}/courts-logo.png`,
     sameAs: [PARENT_SITE, PARENT_SITE_WWW],
   };
 }
@@ -759,6 +759,7 @@ function injectLandingJsonLd({
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     name: SITE_NAME,
+    alternateName: ['Courts by The Ground', 'courts.theground.io'],
     url: homeUrl,
     description: lang === 'zh'
       ? `搜尋香港${HK_DISTRICT_COUNT}區運動場地，共${total}個場館。`

@@ -7,7 +7,7 @@ import { getAuthApiBase, useAuth } from '../../composables/auth';
 import { useAuthStore } from '../../stores/auth';
 import authSideImageUrl from '../../assets/auth_side.png';
 
-const logoUrl = `${import.meta.env.BASE_URL}courts-logo.png`;
+const logoUrl = `${import.meta.env.BASE_URL}green-G.svg`;
 
 const props = defineProps<{
   language: Language;

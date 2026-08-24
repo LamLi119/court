@@ -7,7 +7,7 @@ import { useAuthStore } from '../../stores/auth';
 import IntlTelInputWrapper from './IntlTelInputWrapper.vue';
 import authSideImageUrl from '../../assets/auth_side.png';
 
-const logoUrl = `${import.meta.env.BASE_URL}courts-logo.png`;
+const logoUrl = `${import.meta.env.BASE_URL}green-G.svg`;
 
 const props = defineProps<{
   language: Language;

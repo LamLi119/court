@@ -45,6 +45,7 @@ function sanitizeArticleHtml(html) {
       'p', 'br', 'strong', 'em', 's', 'u', 'code', 'pre', 'blockquote',
       'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'hr', 'a', 'img', 'figure', 'figcaption',
       'div', 'span',
+      'table', 'thead', 'tbody', 'tr', 'th', 'td',
     ],
     allowedAttributes: {
       a: ['href', 'rel', 'target'],
@@ -52,6 +53,9 @@ function sanitizeArticleHtml(html) {
       figure: ['class'],
       figcaption: ['class'],
       div: ['class'],
+      table: ['class'],
+      th: ['scope'],
+      td: ['scope'],
       blockquote: ['class'],
       pre: ['class'],
       code: ['class'],
@@ -88,6 +92,25 @@ function renderList(items, tag) {
   if (!items.length) return '';
   const inner = items.map((item) => `<li>${item}</li>`).join('');
   return `<${tag}>${inner}</${tag}>`;
+}
+
+function tableCellTag(rowIndex, colIndex, hasColumnHeader, hasRowHeader) {
+  if (hasColumnHeader && rowIndex === 0) return 'th';
+  if (hasRowHeader && colIndex === 0) return 'th';
+  return 'td';
+}
+
+function tableCellScope(tag, rowIndex, colIndex, hasColumnHeader) {
+  if (tag !== 'th') return '';
+  if (hasColumnHeader && rowIndex === 0) return ' scope="col"';
+  if (colIndex === 0) return ' scope="row"';
+  return '';
+}
+
+async function renderColumnChildren(block, pageId, copyImage, options) {
+  const children = block.children || [];
+  if (!children.length) return '';
+  return groupListBlocks(children, pageId, copyImage, options);
 }
 
 async function blockToHtml(block, pageId, copyImage, options = {}) {
@@ -192,11 +215,56 @@ async function blockToHtml(block, pageId, copyImage, options = {}) {
     return inner || childHtml ? `<div class="blog-toggle"><p><strong>${inner}</strong></p>${childHtml}</div>` : '';
   }
 
+  if (type === 'table') {
+    const rows = block.children || [];
+    if (!rows.length) return '';
+    const hasColumnHeader = Boolean(data.has_column_header);
+    const hasRowHeader = Boolean(data.has_row_header);
+    const headerCount = hasColumnHeader ? 1 : 0;
+    const headRows = headerCount ? rows.slice(0, 1) : [];
+    const bodyRows = headerCount ? rows.slice(1) : rows;
+    const renderRow = (row, rowIndex) => {
+      const cells = row.table_row?.cells || [];
+      const tds = cells
+        .map((cell, colIndex) => {
+          const tag = tableCellTag(rowIndex, colIndex, hasColumnHeader, hasRowHeader);
+          const scope = tableCellScope(tag, rowIndex, colIndex, hasColumnHeader);
+          return `<${tag}${scope}>${richTextToHtml(cell)}</${tag}>`;
+        })
+        .join('');
+      return `<tr>${tds}</tr>`;
+    };
+    const thead = headRows.length
+      ? `<thead>${headRows.map((row, i) => renderRow(row, i)).join('')}</thead>`
+      : '';
+    const tbodyRows = bodyRows
+      .map((row, i) => renderRow(row, i + headerCount))
+      .join('');
+    const tbody = tbodyRows ? `<tbody>${tbodyRows}</tbody>` : '';
+    return `<div class="blog-table-wrap"><table class="blog-table">${thead}${tbody}</table></div>`;
+  }
+
+  if (type === 'column_list') {
+    const columns = block.children || [];
+    const rendered = [];
+    for (const col of columns) {
+      const inner = await renderColumnChildren(col, pageId, copyImage, options);
+      rendered.push(`<div class="blog-column">${inner}</div>`);
+    }
+    if (!rendered.length) return '';
+    return `<div class="blog-columns">${rendered.join('')}</div>`;
+  }
+
+  if (type === 'column') {
+    const inner = await renderColumnChildren(block, pageId, copyImage, options);
+    return inner ? `<div class="blog-column">${inner}</div>` : '';
+  }
+
   if (type === 'child_page' || type === 'child_database') {
     return '';
   }
 
-  // Unsupported: video, equation, embed, column, table, etc.
+  // Unsupported: video, equation, embed, etc.
   if (data?.url) {
     return `<p><a href="${escapeHtml(data.url)}" rel="noopener noreferrer" target="_blank">${escapeHtml(data.url)}</a></p>`;
   }

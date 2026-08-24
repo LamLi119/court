@@ -115,7 +115,7 @@ onMounted(() => {
         <div class="flex items-center justify-center mb-6">
           <div
             class="w-30 h-30 transition-transform duration-300 group-hover:rotate-12 group-active:scale-90 flex items-center justify-center">
-            <img :src="logoUrl" alt="TheGround.io" class="w-30 h-30" />
+            <img :src="logoUrl" alt="Courts" class="w-30 h-30" />
           </div>
         </div>
 

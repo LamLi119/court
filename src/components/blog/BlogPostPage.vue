@@ -230,4 +230,61 @@ watch(
 .blog-prose-light :deep(li) {
   color: #374151;
 }
+
+.blog-prose :deep(.blog-table-wrap) {
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.blog-prose :deep(.blog-table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.blog-prose :deep(.blog-table th),
+.blog-prose :deep(.blog-table td) {
+  padding: 0.625rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border: 1px solid;
+}
+
+.blog-prose :deep(.blog-table th) {
+  font-weight: 700;
+}
+
+.blog-prose :deep(.blog-columns) {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  margin: 1.5rem 0;
+}
+
+@media (min-width: 768px) {
+  .blog-prose :deep(.blog-columns) {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
+}
+
+.blog-prose-light :deep(.blog-table th),
+.blog-prose-light :deep(.blog-table td) {
+  border-color: #e5e7eb;
+  color: #374151;
+}
+
+.blog-prose-light :deep(.blog-table th) {
+  background: #f3f4f6;
+}
+
+.blog-prose-dark :deep(.blog-table th),
+.blog-prose-dark :deep(.blog-table td) {
+  border-color: #374151;
+  color: #e5e7eb;
+}
+
+.blog-prose-dark :deep(.blog-table th) {
+  background: #1f2937;
+}
 </style>

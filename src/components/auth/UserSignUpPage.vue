@@ -115,7 +115,7 @@ function goToLoginPage() {
       <div class="w-full max-w-md relative pt-12">
         <div class="flex items-center justify-center mb-6">
           <div class="w-30 h-30 flex items-center justify-center">
-            <img :src="logoUrl" alt="TheGround.io" class="w-30 h-30" />
+            <img :src="logoUrl" alt="Courts" class="w-30 h-30" />
           </div>
         </div>
 

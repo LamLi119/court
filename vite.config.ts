@@ -51,7 +51,7 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['green-G.svg', 'black_G.png', 'placeholder.svg', 'hero-map2.png', 'venues-bootstrap.json'],
+        includeAssets: ['courts-logo.png', 'placeholder.svg', 'hero-map2.png', 'venues-bootstrap.json'],
         manifest: {
           name: 'Courts | Find Sports Courts in Hong Kong',
           short_name: 'Courts',
@@ -66,9 +66,9 @@ export default defineConfig(({ mode }) => {
           lang: 'en',
           icons: [
             {
-              src: '/green-G.svg',
+              src: '/courts-logo.png',
               sizes: 'any',
-              type: 'image/svg+xml',
+              type: 'image/png',
               purpose: 'any',
             },
           ],

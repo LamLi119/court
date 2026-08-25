@@ -365,8 +365,9 @@ function isSuperAdminRequest(req) {
   if (session?.type === 'super') return true;
   const pwd = req.body?.password
     || req.body?.superAdminPassword
-    || req.query?.superAdminPassword;
-  return typeof pwd === 'string' && pwd === SUPER_ADMIN_PASSWORD;
+    || req.query?.superAdminPassword
+    || req.get('x-super-admin-password');
+  return typeof pwd === 'string' && pwd.length > 0 && pwd === SUPER_ADMIN_PASSWORD;
 }
 
 function adminCookieOptions(req) {
@@ -817,7 +818,7 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Super-Admin-Password');
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') return res.status(200).end();
   next();

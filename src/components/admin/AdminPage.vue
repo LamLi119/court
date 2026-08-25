@@ -25,6 +25,7 @@ const emit = defineEmits<{
   'update:sports': [sports: SportItem[]];
   reloadVenues: [];
   notify: [type: 'success' | 'error', message: string];
+  updateSuperAdminPassword: [password: string];
 }>();
 
 const sportDisplayName = (s: { name: string; name_zh?: string | null }) =>
@@ -266,23 +267,37 @@ const deleteSportApiCall = async (sportId: number) => {
 const isReorderingSports = ref(false);
 const isBlogSyncing = ref(false);
 
+function promptSuperAdminPassword(): string | null {
+  const pwd = window.prompt(
+    props.language === 'en'
+      ? 'Enter the global super admin password to sync from Notion:'
+      : '請輸入全域超級管理員密碼以從 Notion 同步：',
+  );
+  return pwd && pwd.trim() ? pwd.trim() : null;
+}
+
+/** Cross-origin (localhost → staging) cannot rely on in-memory session cookies alone. Always send password. */
 const runBlogSync = async (force: boolean) => {
   if (!props.isSuperAdmin || isBlogSyncing.value) return;
   isBlogSyncing.value = true;
   try {
+    let password = (props.superAdminSyncPassword || '').trim();
+    if (!password) {
+      password = promptSuperAdminPassword() || '';
+      if (!password) throw new Error(props.t('blogSyncFailed'));
+      emit('updateSuperAdminPassword', password);
+    }
+
     let result;
     try {
-      result = await db.syncBlogFromNotion(props.superAdminSyncPassword || undefined, { force });
+      result = await db.syncBlogFromNotion(password, { force });
     } catch (err: any) {
-      const msg = String(err?.message || '');
-      const needsPassword = msg.toLowerCase().includes('super admin');
-      if (!needsPassword || props.superAdminSyncPassword) throw err;
-      const pwd = window.prompt(
-        props.language === 'en'
-          ? 'Enter the global super admin password to sync from Notion:'
-          : '請輸入全域超級管理員密碼以從 Notion 同步：',
-      );
+      const msg = String(err?.message || '').toLowerCase();
+      const authFailed = msg.includes('super admin') || msg.includes('403') || msg.includes('forbidden');
+      if (!authFailed) throw err;
+      const pwd = promptSuperAdminPassword();
       if (!pwd) throw new Error(props.t('blogSyncFailed'));
+      emit('updateSuperAdminPassword', pwd);
       result = await db.syncBlogFromNotion(pwd, { force });
     }
     const synced = result?.synced ?? 0;

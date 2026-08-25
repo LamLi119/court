@@ -395,9 +395,12 @@ export const db: DbClient = {
     if (password) payload.password = password;
     if (opts?.force) payload.force = true;
     const body = Object.keys(payload).length ? JSON.stringify(payload) : undefined;
+    const headers: Record<string, string> = {};
+    if (password) headers['X-Super-Admin-Password'] = password;
     const res = await apiFetch('/api/blog/sync', {
       method: 'POST',
       ...(body ? { body } : {}),
+      headers,
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));

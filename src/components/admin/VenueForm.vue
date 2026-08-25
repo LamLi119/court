@@ -275,10 +275,11 @@ function initPlacesAutocomplete() {
 
   try {
     placesApiError.value = false;
+    // Omit `types` so both addresses and businesses are suggested (mixing
+    // establishment+geocode is unsupported / flaky on legacy Autocomplete).
     autocompleteRef.value = new google.maps.places.Autocomplete(input, {
       componentRestrictions: { country: 'hk' },
       fields: ['geometry', 'name', 'formatted_address'],
-      types: ['establishment', 'geocode'],
     });
 
     autocompleteRef.value.addListener('place_changed', () => {
@@ -312,19 +313,20 @@ function setupPlacesAutocomplete() {
   nextTick(() => {
     if (!mapLocationInputRef.value) return;
 
-    if (typeof google !== 'undefined' && google.maps?.places) {
-      initPlacesAutocomplete();
-      return;
-    }
-
-    window.addEventListener('google-maps-ready', onReady, { once: true });
-    window.addEventListener('google-maps-auth-error', onAuthFail, { once: true });
+    window.addEventListener('google-maps-ready', onReady);
+    window.addEventListener('google-maps-auth-error', onAuthFail);
     placesMapsReadyCleanup = () => {
       window.removeEventListener('google-maps-ready', onReady);
       window.removeEventListener('google-maps-auth-error', onAuthFail);
     };
 
+    // Always call loader: if Maps already ready it re-dispatches `google-maps-ready`
+    // so this form still initializes Autocomplete after explore map loaded first.
     loadGoogleMapsScript();
+
+    if (typeof google !== 'undefined' && google.maps?.places) {
+      initPlacesAutocomplete();
+    }
   });
 }
 
@@ -1218,14 +1220,16 @@ const inputClass =
           </label>
           <input
             ref="mapLocationInputRef"
-            v-model="mapSearchQuery"
             type="text"
+            :value="mapSearchQuery"
+            autocomplete="off"
             :class="inputClass"
             :placeholder="
               language === 'en'
                 ? 'Search building or street to set map pin…'
                 : '搜尋大廈或街道以設定地圖圖釘…'
             "
+            @input="mapSearchQuery = ($event.target as HTMLInputElement).value"
           />
           <p
             v-if="placesApiError"

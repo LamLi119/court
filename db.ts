@@ -222,7 +222,15 @@ export type DbClient = {
   updateVenueOrder(orderedIds: number[], sportId?: number | null): Promise<void>;
   getBlogPosts(): Promise<BlogPostSummary[]>;
   getBlogPost(slug: string): Promise<BlogPost | null>;
-  syncBlogFromNotion(password?: string): Promise<{ success: boolean; synced: number; removed: number; slugs: string[] }>;
+  syncBlogFromNotion(password?: string, opts?: { force?: boolean }): Promise<{
+    success: boolean;
+    synced: number;
+    skipped?: number;
+    removed: number;
+    forced?: boolean;
+    slugs: string[];
+    copiedSlugs?: string[];
+  }>;
 };
 
 export const db: DbClient = {
@@ -371,11 +379,28 @@ export const db: DbClient = {
     return res.json();
   },
 
-  async syncBlogFromNotion(password?: string): Promise<{ success: boolean; synced: number; removed: number; slugs: string[] }> {
-    const body = password ? JSON.stringify({ password }) : undefined;
+  async syncBlogFromNotion(
+    password?: string,
+    opts?: { force?: boolean },
+  ): Promise<{
+    success: boolean;
+    synced: number;
+    skipped?: number;
+    removed: number;
+    forced?: boolean;
+    slugs: string[];
+    copiedSlugs?: string[];
+  }> {
+    const payload: Record<string, unknown> = {};
+    if (password) payload.password = password;
+    if (opts?.force) payload.force = true;
+    const body = Object.keys(payload).length ? JSON.stringify(payload) : undefined;
+    const headers: Record<string, string> = {};
+    if (password) headers['X-Super-Admin-Password'] = password;
     const res = await apiFetch('/api/blog/sync', {
       method: 'POST',
       ...(body ? { body } : {}),
+      headers,
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: res.statusText }));

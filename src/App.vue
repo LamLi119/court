@@ -994,6 +994,7 @@ const handleSaveVenue = async (venueData: any) => {
         @update:sports="(s) => { sports = s; }"
         @reload-venues="loadData"
         @notify="showAdminNotification"
+        @update-super-admin-password="(pwd: string) => { superAdminSyncPassword = pwd; }"
       />
 
       <div v-else class="flex flex-col flex-1 min-h-0 w-full">

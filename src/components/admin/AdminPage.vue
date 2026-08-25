@@ -25,6 +25,7 @@ const emit = defineEmits<{
   'update:sports': [sports: SportItem[]];
   reloadVenues: [];
   notify: [type: 'success' | 'error', message: string];
+  updateSuperAdminPassword: [password: string];
 }>();
 
 const sportDisplayName = (s: { name: string; name_zh?: string | null }) =>
@@ -266,32 +267,48 @@ const deleteSportApiCall = async (sportId: number) => {
 const isReorderingSports = ref(false);
 const isBlogSyncing = ref(false);
 
-const syncBlogFromNotion = async () => {
+function promptSuperAdminPassword(): string | null {
+  const pwd = window.prompt(
+    props.language === 'en'
+      ? 'Enter the global super admin password to sync from Notion:'
+      : '請輸入全域超級管理員密碼以從 Notion 同步：',
+  );
+  return pwd && pwd.trim() ? pwd.trim() : null;
+}
+
+/** Cross-origin (localhost → staging) cannot rely on in-memory session cookies alone. Always send password. */
+const runBlogSync = async (force: boolean) => {
   if (!props.isSuperAdmin || isBlogSyncing.value) return;
   isBlogSyncing.value = true;
   try {
+    let password = (props.superAdminSyncPassword || '').trim();
+    if (!password) {
+      password = promptSuperAdminPassword() || '';
+      if (!password) throw new Error(props.t('blogSyncFailed'));
+      emit('updateSuperAdminPassword', password);
+    }
+
     let result;
     try {
-      result = await db.syncBlogFromNotion(props.superAdminSyncPassword || undefined);
+      result = await db.syncBlogFromNotion(password, { force });
     } catch (err: any) {
-      const msg = String(err?.message || '');
-      const needsPassword = msg.toLowerCase().includes('super admin');
-      if (!needsPassword || props.superAdminSyncPassword) throw err;
-      const pwd = window.prompt(
-        props.language === 'en'
-          ? 'Enter the global super admin password to sync from Notion:'
-          : '請輸入全域超級管理員密碼以從 Notion 同步：',
-      );
+      const msg = String(err?.message || '').toLowerCase();
+      const authFailed = msg.includes('super admin') || msg.includes('403') || msg.includes('forbidden');
+      if (!authFailed) throw err;
+      const pwd = promptSuperAdminPassword();
       if (!pwd) throw new Error(props.t('blogSyncFailed'));
-      result = await db.syncBlogFromNotion(pwd);
+      emit('updateSuperAdminPassword', pwd);
+      result = await db.syncBlogFromNotion(pwd, { force });
     }
-    const count = result?.synced ?? 0;
+    const synced = result?.synced ?? 0;
+    const skipped = result?.skipped ?? 0;
+    const removed = result?.removed ?? 0;
     emit(
       'notify',
       'success',
       props.language === 'en'
-        ? `${props.t('blogSyncSuccess')} (${count})`
-        : `${props.t('blogSyncSuccess')}（${count}）`,
+        ? `${props.t('blogSyncSuccess')} (synced ${synced}, skipped ${skipped}, removed ${removed})`
+        : `${props.t('blogSyncSuccess')}（已同步 ${synced}，略過 ${skipped}，刪除 ${removed}）`,
     );
   } catch (err: any) {
     emit('notify', 'error', err?.message || props.t('blogSyncFailed'));
@@ -299,6 +316,9 @@ const syncBlogFromNotion = async () => {
     isBlogSyncing.value = false;
   }
 };
+
+const syncBlogFromNotion = () => runBlogSync(false);
+const forceSyncBlogFromNotion = () => runBlogSync(true);
 
 const moveSportType = async (sportId: number, direction: -1 | 1) => {
   if (isReorderingSports.value) return;
@@ -336,18 +356,29 @@ const moveSportType = async (sportId: number, direction: -1 | 1) => {
         <p class="text-xs font-bold uppercase tracking-wider text-[#007a67] mb-1">Blog</p>
         <p class="text-sm" :class="darkMode ? 'text-gray-300' : 'text-gray-600'">
           {{ language === 'en'
-            ? 'Pull published posts from your Notion database into Courts.'
-            : '從 Notion 資料庫拉取已發佈文章至 Courts。' }}
+            ? 'Pull published posts from your Notion database into Courts. Unchanged pages (same Notion id + last edited) are skipped. After sync, redeploy Vercel so /blog/:slug crawler HTML updates.'
+            : '從 Notion 資料庫拉取已發佈文章至 Courts。未變更的頁面（相同 Notion id 與最後編輯時間）會略過。同步後請重新部署 Vercel，讓 /blog/:slug 的搜尋引擎 HTML 更新。' }}
         </p>
       </div>
-      <button
-        type="button"
-        class="px-4 py-3 rounded-lg font-black text-sm bg-[#007a67] text-white disabled:opacity-60"
-        :disabled="isBlogSyncing"
-        @click="syncBlogFromNotion"
-      >
-        {{ isBlogSyncing ? t('blogSyncing') : t('blogSync') }}
-      </button>
+      <div class="flex flex-col sm:flex-row gap-2 shrink-0">
+        <button
+          type="button"
+          class="px-4 py-3 rounded-lg font-black text-sm bg-[#007a67] text-white disabled:opacity-60"
+          :disabled="isBlogSyncing"
+          @click="syncBlogFromNotion"
+        >
+          {{ isBlogSyncing ? t('blogSyncing') : t('blogSync') }}
+        </button>
+        <button
+          type="button"
+          class="px-4 py-3 rounded-lg font-black text-sm border disabled:opacity-60"
+          :class="darkMode ? 'border-gray-600 text-gray-200' : 'border-gray-300 text-gray-800'"
+          :disabled="isBlogSyncing"
+          @click="forceSyncBlogFromNotion"
+        >
+          {{ isBlogSyncing ? t('blogSyncing') : t('blogForceSync') }}
+        </button>
+      </div>
     </div>
 
     <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">

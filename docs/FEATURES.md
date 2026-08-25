@@ -80,10 +80,13 @@ Each venue page shows:
 
 ### 2.5 Blog (`/blog`, `/blog/:slug`)
 
-- **Source:** Notion database (each page = one post).
-- **Sync:** Super-admin → **Sync blog from Notion** in `/admin` (pulls `Status = Published` rows into MySQL).
-- **Images:** Cover + inline body images copied to GCS `blog/` during sync (Notion URLs expire).
+- **Source:** Notion database (each page = one post). `blog_posts.id` = Notion page id.
+- **Sync:** Super-admin in `/admin`:
+  - **Sync blog from Notion** — pulls `Status = Published` rows; skips a page when Courts already has the same Notion id and `notion_last_edited` matches (no blocks fetch, no GCS copy, no DB write).
+  - **Force resync all** — re-copies every Published page once (ignores timestamps).
+- **Images:** Cover + inline body images copied to GCS `blog/` during a full copy (Notion URLs expire).
 - **Notion DB properties:** `Name`, `Slug`, `Status`, `Summary`, `Published`, `Cover` (+ page body blocks).
+- **Crawler / Google Article HTML:** Build-time only. After sync, **redeploy Vercel** so `npm run build` runs `generate-sitemap` + `prerender-seo-html` and writes `dist/blog/{slug}/index.html` with title, `og:type=article`, `BlogPosting` JSON-LD, and a short body snippet. Without that static file, Vercel’s SPA rewrite serves homepage SEO (website / directory). Confirm with view-source / `curl` before GSC URL Inspection.
 
 **Env (server only):** `NOTION_API_TOKEN`, `NOTION_BLOG_DATABASE_ID`
 
@@ -93,7 +96,7 @@ Each venue page shows:
 |--------|------|-------------|
 | GET | `/api/blog` | Published post list |
 | GET | `/api/blog/:slug` | Full post (`body_html`) |
-| POST | `/api/blog/sync` | Super-admin sync from Notion |
+| POST | `/api/blog/sync` | Super-admin sync from Notion (`force: true` in body/query to re-copy all) |
 
 **Migration:** `scripts/add-blog_posts.sql`
 

@@ -82,3 +82,29 @@ export async function getAllPublishedSlugs(db) {
   );
   return (rows || []).map((r) => r.slug).filter(Boolean);
 }
+
+/** Existing rows keyed by Notion page id for skip-if-unchanged sync. */
+export async function getBlogPostsSyncIndex(db) {
+  const [rows] = await db.execute(
+    `SELECT id, slug, notion_last_edited FROM blog_posts`
+  );
+  const map = new Map();
+  for (const row of rows || []) {
+    if (!row?.id) continue;
+    map.set(String(row.id), {
+      id: String(row.id),
+      slug: row.slug || '',
+      notion_last_edited: row.notion_last_edited || null,
+    });
+  }
+  return map;
+}
+
+/** Compare Notion last_edited_time to stored MySQL datetime (second precision). */
+export function isNotionLastEditedUnchanged(stored, notionLastEdited) {
+  if (!stored || !notionLastEdited) return false;
+  const a = new Date(stored).getTime();
+  const b = new Date(notionLastEdited).getTime();
+  if (Number.isNaN(a) || Number.isNaN(b)) return false;
+  return Math.floor(a / 1000) === Math.floor(b / 1000);
+}

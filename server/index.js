@@ -1686,7 +1686,9 @@ app.get('/api/blog/:slug', async (req, res) => {
   }
 });
 
-/** Super-admin: sync published Notion database pages into MySQL. */
+/** Super-admin: sync published Notion database pages into MySQL.
+ * Body/query: force=true to re-copy every Published page (ignore notion_last_edited).
+ */
 app.post('/api/blog/sync', async (req, res) => {
   try {
     if (!isSuperAdminRequest(req)) {
@@ -1694,8 +1696,14 @@ app.post('/api/blog/sync', async (req, res) => {
         error: 'Super admin required. Log in with the global super admin password (not a venue password).',
       });
     }
+    const force =
+      req.body?.force === true ||
+      req.body?.force === 'true' ||
+      req.body?.force === 1 ||
+      req.query?.force === 'true' ||
+      req.query?.force === '1';
     const db = getPool();
-    const result = await syncBlogFromNotion(db);
+    const result = await syncBlogFromNotion(db, { force });
     invalidateBlogCache();
     res.json({ success: true, ...result });
   } catch (err) {
